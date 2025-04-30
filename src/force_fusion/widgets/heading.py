@@ -91,9 +91,7 @@ class HeadingWidget(QWidget):
 
         # Draw title
         painter.setPen(QColor(config.TEXT_COLOR))
-        painter.drawText(
-            QRectF(0, 5, width, 20), Qt.AlignCenter, "Course over ground 0-360 degrees"
-        )
+        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Course over Ground")
 
     def _draw_compass_rose(self, painter, center_x, center_y, radius):
         """Draw the compass rose with tick marks and cardinal directions."""

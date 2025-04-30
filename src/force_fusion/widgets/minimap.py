@@ -154,9 +154,7 @@ class MinimapWidget(QWidget):
 
         # Draw title
         painter.setPen(QColor(config.TEXT_COLOR))
-        painter.drawText(
-            QRectF(0, 5, width, 20), Qt.AlignCenter, "2D Minimap of Vehicle Trajectory"
-        )
+        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "2D Minimap")
 
     def _draw_grid(self, painter, center_x, center_y, radius):
         """Draw the coordinate grid."""
