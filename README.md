@@ -1,6 +1,6 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Force-Fusion">
-      <img src="/src/force_fusion/resources/favicon.png" width=50% alt="logo">
+      <img src="/src/force_fusion/resources/favicon.png" width=40% alt="logo">
    </a>   
    <h1>Force Fusion</h1>
     <h6><small>A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution.</small></h6>
