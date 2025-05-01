@@ -80,7 +80,7 @@ class SensorProvider(QObject):
 
     def start(self):
         """Start all sensor update timers."""
-        from . import config
+        from force_fusion import config
 
         # Start timers with configured intervals
         self._position_timer.start(config.GPS_UPDATE_INTERVAL)

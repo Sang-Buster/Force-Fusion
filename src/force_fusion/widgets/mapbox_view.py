@@ -1,12 +1,221 @@
 """
 Mapbox view widget with 3D map and car model.
+Uses Mapbox GL JS and ThreeBox for 3D visualization.
+Includes WebSocket server to stream vehicle data.
 """
 
-from PyQt5.QtCore import Qt, QUrl
+import asyncio
+import json
+import os
+import random
+from threading import Thread
+
+# Set critical environment variables before importing Qt
+os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+    "--enable-webgl --ignore-gpu-blocklist --enable-gpu-rasterization --enable-native-gpu-memory-buffers --enable-zero-copy"
+)
+os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
+
+import websockets
+from PyQt5.QtCore import QCoreApplication, Qt, QUrl
 from PyQt5.QtWebEngineWidgets import QWebEngineSettings, QWebEngineView
 from PyQt5.QtWidgets import QLabel, QSizePolicy, QVBoxLayout, QWidget
 
-from .. import config
+from force_fusion import config
+
+
+def check_opengl():
+    """Check if OpenGL is properly set up."""
+    try:
+        import subprocess
+
+        result = subprocess.run(
+            ["glxinfo", "|", "grep", "OpenGL"],
+            shell=True,
+            capture_output=True,
+            text=True,
+        )
+        print("OpenGL information:")
+        print(result.stdout)
+        return True
+    except Exception as e:
+        print(f"Failed to check OpenGL: {e}")
+        return False
+
+
+# Set QtWebEngine command line args for GPU and rendering via QCoreApplication
+def set_webengine_args():
+    """Set QWebEngine command line arguments for better GPU performance."""
+    # Qt WebEngine args need to be set before QApplication is created
+    # For PyQt5 versions that don't have setWebEngineArguments
+    args = [
+        "--enable-gpu-rasterization",
+        "--enable-accelerated-2d-canvas",
+        "--enable-zero-copy",
+        "--ignore-gpu-blocklist",
+        "--enable-hardware-overlays",
+        "--enable-features=VaapiVideoDecoder",
+        "--disable-features=UseOzonePlatform",
+        "--disable-gpu-driver-bug-workarounds",
+    ]
+
+    # Check if we're running within an existing QApplication
+    if QCoreApplication.instance():
+        print("QApplication already exists, skipping WebEngine arguments")
+    else:
+        # Set args via environment variable as an alternative
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " ".join(args)
+        # Additional environment variables to enable WebGL
+        os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"  # Disable sandbox for testing
+        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
+            "--enable-webgl --ignore-gpu-blocklist"
+        )
+        print("Set WebEngine args via environment variable")
+
+    # Print WebGL support information
+    print(f"OpenGL vendor string: {os.environ.get('QT_OPENGL_DEBUG')}")
+    check_opengl()
+
+
+# Call this function before creating any QWebEngineView
+set_webengine_args()
+
+
+class WebSocketServer:
+    """WebSocket server to broadcast vehicle data to connected clients."""
+
+    def __init__(self, port=8051):
+        """Initialize the WebSocket server.
+
+        Args:
+            port: Port number for the WebSocket server
+        """
+        self.port = port
+        self.connected_clients = set()
+        self.server = None
+        self.running = False
+
+        # Lon/Lat boundaries for random data generation
+        self.lon_min = -81.053238
+        self.lon_max = -81.044849
+        self.lat_min = 29.186305
+        self.lat_max = 29.192406
+
+        # Initial position and orientation
+        self.latitude = self.lat_min + (self.lat_max - self.lat_min) / 2
+        self.longitude = self.lon_min + (self.lon_max - self.lon_min) / 2
+        self.heading = 0.0
+        self.pitch = 0.0
+        self.roll = 0.0
+
+        # Create a thread for the asyncio event loop
+        self.loop = asyncio.new_event_loop()
+        self.thread = Thread(target=self._run_server, daemon=True)
+
+    def _run_server(self):
+        """Run the asyncio event loop in a separate thread."""
+        asyncio.set_event_loop(self.loop)
+        self.loop.run_forever()
+
+    async def _handler(self, websocket):
+        """Handle new WebSocket connections.
+
+        Args:
+            websocket: WebSocket connection
+        """
+        remote_address = f"{websocket.remote_address[0]}:{websocket.remote_address[1]}"
+        print(f"[WS] New client connected: {remote_address}")
+        self.connected_clients.add(websocket)
+
+        try:
+            # Send initial data right away to this client
+            await self._send_data(websocket)
+
+            # Keep connection open
+            await websocket.wait_closed()
+        except websockets.exceptions.ConnectionClosedError:
+            print(f"[WS] Connection closed with error: {remote_address}")
+        except Exception as e:
+            print(f"[WS] Error with client {remote_address}: {e}")
+        finally:
+            print(f"[WS] Client disconnected: {remote_address}")
+            self.connected_clients.remove(websocket)
+
+    async def _start_server(self):
+        """Start the WebSocket server."""
+        self.server = await websockets.serve(self._handler, "0.0.0.0", self.port)
+        self.running = True
+        print(f"[WS] Server started on port {self.port}")
+
+    async def _broadcast_data(self):
+        """Generate and broadcast vehicle data to all connected clients."""
+        while self.running:
+            if not self.connected_clients:
+                await asyncio.sleep(0.1)
+                continue
+
+            # Send data to all clients
+            broadcast_tasks = [
+                self._send_data(client) for client in self.connected_clients
+            ]
+            if broadcast_tasks:
+                await asyncio.gather(*broadcast_tasks)
+
+            # Wait before next update
+            await asyncio.sleep(1)
+
+    async def _send_data(self, websocket):
+        """Send vehicle data to a specific client."""
+        try:
+            # Generate random movement within bounds
+            self.longitude += random.uniform(-0.00005, 0.00005)
+            self.latitude += random.uniform(-0.00005, 0.00005)
+
+            # Keep within bounds
+            self.longitude = max(self.lon_min, min(self.lon_max, self.longitude))
+            self.latitude = max(self.lat_min, min(self.lat_max, self.latitude))
+
+            # Update heading, pitch, and roll with small changes
+            self.heading = (self.heading + random.uniform(-1, 1)) % 360
+            self.pitch = max(-10, min(10, self.pitch + random.uniform(-0.5, 0.5)))
+            self.roll = max(-10, min(10, self.roll + random.uniform(-0.5, 0.5)))
+
+            # Format data in the expected format for map_component.html
+            data = {
+                "droneCoords": [[f"{self.longitude},{self.latitude},0"]],
+                "droneNames": [["Vehicle"]],
+                "dronePitch": [[str(self.pitch)]],
+                "droneYaw": [[str(self.heading)]],
+                "droneRoll": [[str(self.roll)]],
+            }
+
+            # Convert to JSON and send to client
+            json_data = json.dumps(data)
+            await websocket.send(json_data)
+            print(f"[WS] Sent: {self.latitude:.6f}, {self.longitude:.6f}")
+
+        except Exception as e:
+            print(f"[WS] Error sending data: {e}")
+
+    def start(self):
+        """Start the WebSocket server and data broadcasting."""
+        self.thread.start()
+        self.server_task = asyncio.run_coroutine_threadsafe(
+            self._start_server(), self.loop
+        )
+        self.broadcast_task = asyncio.run_coroutine_threadsafe(
+            self._broadcast_data(), self.loop
+        )
+
+    def stop(self):
+        """Stop the WebSocket server."""
+        if self.running:
+            self.running = False
+            if hasattr(self, "broadcast_task") and self.broadcast_task:
+                self.broadcast_task.cancel()
+            if self.server:
+                self.server.close()
+            self.loop.call_soon_threadsafe(self.loop.stop)
 
 
 class MapboxView(QWidget):
@@ -15,11 +224,9 @@ class MapboxView(QWidget):
 
     Features:
     - Interactive 3D map using Mapbox GL JS
-    - Vehicle position updating in real-time
+    - Vehicle position updating in real-time over WebSocket
     - Vehicle model with correct orientation (heading, pitch, roll)
     - Terrain-based visualization
-
-    Note: Requires a valid Mapbox token set in the config module.
     """
 
     def __init__(self, parent=None):
@@ -31,39 +238,34 @@ class MapboxView(QWidget):
         """
         super().__init__(parent)
 
-        # Current vehicle position and orientation
-        self._latitude = 0.0
-        self._longitude = 0.0
-        self._heading = 0.0
-        self._pitch = 0.0
-        self._roll = 0.0
-
-        # Map settings
-        self._zoom = config.DEFAULT_ZOOM
-        self._follow_vehicle = True
-
         # Set widget properties
-        self.setMinimumSize(300, 200)
+        self.setMinimumSize(400, 300)
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         # Create layout
         self._layout = QVBoxLayout(self)
         self._layout.setContentsMargins(0, 0, 0, 0)
 
+        # Initialize WebSocket server
+        self.ws_server = WebSocketServer()
+
         # Check if the token is set
         if config.MAPBOX_TOKEN == "YOUR_MAPBOX_TOKEN_HERE":
             # Token not set, show placeholder instead
-            self._setup_placeholder()
+            self._setup_placeholder(
+                "3D Live Mapbox Map with 3D Car Model\n\n"
+                "Please set your Mapbox token in config.py to activate this feature."
+            )
         else:
             # Token is set, initialize the Mapbox view
             self._setup_mapbox_view()
 
-    def _setup_placeholder(self):
-        """Set up a placeholder for when the Mapbox token is not set."""
-        self._placeholder = QLabel(
-            "3D Live Mapbox Map with 3D Car Model\n\n"
-            "Please set your Mapbox token in config.py to activate this feature."
-        )
+            # Start WebSocket server
+            self.ws_server.start()
+
+    def _setup_placeholder(self, message):
+        """Set up a placeholder for when the Mapbox token is not set or error occurred."""
+        self._placeholder = QLabel(message)
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._placeholder.setStyleSheet(
             f"color: {config.TEXT_COLOR}; "
@@ -79,191 +281,124 @@ class MapboxView(QWidget):
         # Create the WebEngineView
         self._web_view = QWebEngineView()
 
-        # Enable WebGL and other required settings
+        # Set window flags for better rendering
+        self._web_view.setContextMenuPolicy(Qt.NoContextMenu)
+
+        # Configure WebEngine settings for maximum performance
         settings = self._web_view.settings()
+
+        # Enable WebGL and other required settings
         settings.setAttribute(QWebEngineSettings.WebGLEnabled, True)
         settings.setAttribute(QWebEngineSettings.Accelerated2dCanvasEnabled, True)
         settings.setAttribute(QWebEngineSettings.LocalContentCanAccessRemoteUrls, True)
-        # Try disabling WebGL hardware acceleration as a potential fix for context errors
-        # settings.setAttribute(QWebEngineSettings.WebGLEnabled, False) # Keep enabled for now, try below first
+        settings.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
+        settings.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
+        settings.setAttribute(QWebEngineSettings.AllowRunningInsecureContent, True)
 
-        # Load the initial HTML with the Mapbox map
-        html = self._generate_mapbox_html()
-        self._web_view.setHtml(html, QUrl("https://api.mapbox.com/"))
+        # Try to set additional settings that might not be available in all PyQt versions
+        for attr_name, attr_value in [
+            ("PluginsEnabled", True),
+            ("FullScreenSupportEnabled", True),
+            ("ShowScrollBars", False),
+        ]:
+            try:
+                attr = getattr(QWebEngineSettings, attr_name)
+                settings.setAttribute(attr, attr_value)
+            except AttributeError:
+                pass
 
-        # Add to layout
-        self._layout.addWidget(self._web_view)
+        # Get the path to the HTML file
+        html_path = os.path.join(os.path.dirname(__file__), "map_component.html")
 
-    def _generate_mapbox_html(self):
-        """Generate the HTML for the Mapbox map with the car model."""
-        html = f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8" />
-            <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-            <script src="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js"></script>
-            <link href="https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css" rel="stylesheet" />
-            <style>
-                body {{ margin: 0; padding: 0; }}
-                #map {{ width: 100%; height: 100vh; }}
-            </style>
-        </head>
-        <body>
-            <div id="map"></div>
-            <script>
-                mapboxgl.accessToken = '{config.MAPBOX_TOKEN}';
-                
-                const map = new mapboxgl.Map({{
-                    container: 'map',
-                    style: '{config.MAPBOX_STYLE}',
-                    center: [{self._longitude}, {self._latitude}],
-                    zoom: {self._zoom},
-                    pitch: 60,
-                    bearing: {self._heading},
-                    antialias: true
-                }});
-                
-                // Wait for the map to load
-                map.on('load', () => {{
-                    // Add 3D buildings and terrain if available on the map style
-                    if (map.getStyle().layers) {{
-                        const layers = map.getStyle().layers;
-                        
-                        // Find the index of the first symbol layer in the map style
-                        let firstSymbolId;
-                        for (const layer of layers) {{
-                            if (layer.type === 'symbol') {{
-                                firstSymbolId = layer.id;
-                                break;
-                            }}
-                        }}
-                        
-                        // Add 3D buildings
-                        map.addLayer(
-                            {{
-                                'id': '3d-buildings',
-                                'source': 'composite',
-                                'source-layer': 'building',
-                                'filter': ['==', 'extrude', 'true'],
-                                'type': 'fill-extrusion',
-                                'minzoom': 15,
-                                'paint': {{
-                                    'fill-extrusion-color': '#aaa',
-                                    'fill-extrusion-height': [
-                                        'interpolate',
-                                        ['linear'],
-                                        ['zoom'],
-                                        15, 0,
-                                        16, ['get', 'height']
-                                    ],
-                                    'fill-extrusion-base': [
-                                        'interpolate',
-                                        ['linear'],
-                                        ['zoom'],
-                                        15, 0,
-                                        16, ['get', 'min_height']
-                                    ],
-                                    'fill-extrusion-opacity': 0.6
-                                }}
-                            }},
-                            firstSymbolId
-                        );
-                    }}
+        try:
+            # Read the HTML content
+            with open(html_path, "r") as f:
+                html_content = f.read()
+
+            # Replace the token if needed
+            if "YOUR_MAPBOX_TOKEN_PLACEHOLDER" in html_content:
+                html_content = html_content.replace(
+                    "YOUR_MAPBOX_TOKEN_PLACEHOLDER", config.MAPBOX_TOKEN
+                )
+
+                # Write the modified HTML back to the file
+                with open(html_path, "w") as f:
+                    f.write(html_content)
+
+            # Convert file path to URL
+            file_url = QUrl.fromLocalFile(os.path.abspath(html_path))
+
+            # Set up JavaScript error handler
+            self._web_view.page().javaScriptConsoleMessage = self._handle_js_console
+
+            # Load the HTML file directly
+            self._web_view.load(file_url)
+
+            print(f"Loading map content directly from file: {html_path}")
+
+            # Add to layout
+            self._layout.addWidget(self._web_view)
+
+        except Exception as e:
+            print(f"Error loading map_component.html: {e}")
+            self._setup_placeholder(f"Error loading map: {e}")
+
+    def _check_webgl_initialization(self, success):
+        """Check if WebGL initialization was successful, show error if not."""
+        if success:
+            # Run JavaScript to check if WebGL initialization succeeded
+            script = """
+            (function() {
+                try {
+                    // Try to create a WebGL context
+                    var canvas = document.createElement('canvas');
+                    var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+                    if (!gl) {
+                        return "WebGL is not supported by your browser/hardware";
+                    }
                     
-                    // Add the car model as a custom marker
-                    const el = document.createElement('div');
-                    el.className = 'car-marker';
-                    el.style.width = '20px';
-                    el.style.height = '40px';
-                    el.style.backgroundImage = 'url(https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png)';
-                    el.style.backgroundSize = 'contain';
-                    el.style.backgroundRepeat = 'no-repeat';
+                    // Check if map initialized
+                    if (!window.map) {
+                        return "MapboxGL failed to initialize";
+                    }
                     
-                    // Create a marker for the car
-                    window.carMarker = new mapboxgl.Marker(el)
-                        .setLngLat([{self._longitude}, {self._latitude}])
-                        .addTo(map);
-                    
-                    // Add vehicle heading indicator (optional, more advanced implementation)
-                    map.addSource('vehicle-direction', {{
-                        'type': 'geojson',
-                        'data': {{
-                            'type': 'Feature',
-                            'properties': {{}},
-                            'geometry': {{
-                                'type': 'LineString',
-                                'coordinates': [
-                                    [{self._longitude}, {self._latitude}],
-                                    [{self._longitude}, {self._latitude}]  // Will be updated
-                                ]
-                            }}
-                        }}
-                    }});
-                    
-                    map.addLayer({{
-                        'id': 'vehicle-direction-line',
-                        'type': 'line',
-                        'source': 'vehicle-direction',
-                        'layout': {{
-                            'line-cap': 'round',
-                            'line-join': 'round'
-                        }},
-                        'paint': {{
-                            'line-color': '#33ccff',
-                            'line-width': 3
-                        }}
-                    }});
-                }});
-                
-                // Function to update the vehicle position and orientation
-                function updateVehicle(longitude, latitude, heading, pitch, roll) {{
-                    // Update the car marker position
-                    if (window.carMarker) {{
-                        window.carMarker.setLngLat([longitude, latitude]);
-                        
-                        // Update the marker rotation to match the heading
-                        window.carMarker.getElement().style.transform = 
-                            `rotate(${{heading}}deg) rotateX(${{pitch}}deg) rotateZ(${{roll}}deg)`;
-                    }}
-                    
-                    // Calculate the direction line end point
-                    const headingRad = (heading * Math.PI) / 180;
-                    const lineLength = 0.001;  // Approx. 100m at equator
-                    const endLng = longitude + lineLength * Math.sin(headingRad);
-                    const endLat = latitude + lineLength * Math.cos(headingRad);
-                    
-                    // Update the direction line
-                    if (map.getSource('vehicle-direction')) {{
-                        map.getSource('vehicle-direction').setData({{
-                            'type': 'Feature',
-                            'properties': {{}},
-                            'geometry': {{
-                                'type': 'LineString',
-                                'coordinates': [
-                                    [longitude, latitude],
-                                    [endLng, endLat]
-                                ]
-                            }}
-                        }});
-                    }}
-                    
-                    // If following the vehicle, update the map center
-                    if ({str(self._follow_vehicle).lower()}) {{
-                        map.setCenter([longitude, latitude]);
-                        map.setBearing(heading);
-                    }}
-                }}
-                
-                // Expose a function to call from Python
-                window.updateVehicleFromPython = (longitude, latitude, heading, pitch, roll) => {{
-                    updateVehicle(longitude, latitude, heading, pitch, roll);
-                }};
-            </script>
-        </body>
-        </html>
-        """
-        return html
+                    // All good
+                    return "";
+                } catch (e) {
+                    return "WebGL error: " + e.message;
+                }
+            })();
+            """
+
+            self._web_view.page().runJavaScript(script, self._handle_webgl_check_result)
+
+    def _handle_webgl_check_result(self, result):
+        """Handle the result of WebGL initialization check."""
+        if result:
+            print(f"WebGL initialization failed: {result}")
+
+            # Remove the web view
+            if hasattr(self, "_web_view"):
+                self._web_view.setVisible(False)
+                self._layout.removeWidget(self._web_view)
+                self._web_view.deleteLater()
+                self._web_view = None
+
+            # Show error message
+            self._setup_placeholder(
+                f"3D Map Error\n\nWebGL initialization failed: {result}\n\nPlease ensure your system supports hardware-accelerated graphics."
+            )
+
+    def _handle_js_console(self, level, message, line, source):
+        """Handle JavaScript console messages."""
+        print(f"JS: {message}")
+
+        # Check for WebGL errors
+        if "WebGL" in message and (
+            "error" in message.lower() or "fail" in message.lower()
+        ):
+            print(f"WebGL error detected: {message}")
+            # The _check_webgl_initialization will handle this
 
     def update_position(self, latitude, longitude):
         """
@@ -273,9 +408,8 @@ class MapboxView(QWidget):
             latitude: Latitude in degrees
             longitude: Longitude in degrees
         """
-        self._latitude = latitude
-        self._longitude = longitude
-        self._update_vehicle()
+        self.ws_server.latitude = latitude
+        self.ws_server.longitude = longitude
 
     def update_heading(self, heading):
         """
@@ -284,8 +418,7 @@ class MapboxView(QWidget):
         Args:
             heading: Heading in degrees (0-360)
         """
-        self._heading = heading
-        self._update_vehicle()
+        self.ws_server.heading = heading
 
     def update_pitch(self, pitch):
         """
@@ -294,8 +427,7 @@ class MapboxView(QWidget):
         Args:
             pitch: Pitch angle in degrees
         """
-        self._pitch = pitch
-        self._update_vehicle()
+        self.ws_server.pitch = pitch
 
     def update_roll(self, roll):
         """
@@ -304,8 +436,7 @@ class MapboxView(QWidget):
         Args:
             roll: Roll angle in degrees
         """
-        self._roll = roll
-        self._update_vehicle()
+        self.ws_server.roll = roll
 
     def update_pose(self, latitude, longitude, heading, pitch, roll):
         """
@@ -318,54 +449,16 @@ class MapboxView(QWidget):
             pitch: Pitch angle in degrees
             roll: Roll angle in degrees
         """
-        self._latitude = latitude
-        self._longitude = longitude
-        self._heading = heading
-        self._pitch = pitch
-        self._roll = roll
-        self._update_vehicle()
+        self.ws_server.latitude = latitude
+        self.ws_server.longitude = longitude
+        self.ws_server.heading = heading
+        self.ws_server.pitch = pitch
+        self.ws_server.roll = roll
 
-    def _update_vehicle(self):
-        """Update the vehicle position and orientation on the map."""
-        # Skip if we're showing the placeholder
-        if (
-            hasattr(self, "_web_view")
-            and config.MAPBOX_TOKEN != "YOUR_MAPBOX_TOKEN_HERE"
-        ):
-            # Use JavaScript to update the vehicle
-            js = f"if(window.updateVehicleFromPython) updateVehicleFromPython({self._longitude}, {self._latitude}, {self._heading}, {self._pitch}, {self._roll});"
-            self._web_view.page().runJavaScript(js)
+    def closeEvent(self, event):
+        """Handle widget close event to stop WebSocket server and clean up."""
+        # Stop WebSocket server
+        if hasattr(self, "ws_server"):
+            self.ws_server.stop()
 
-    def set_follow_vehicle(self, follow):
-        """
-        Set whether the map should follow the vehicle.
-
-        Args:
-            follow: True to follow the vehicle, False for fixed view
-        """
-        self._follow_vehicle = follow
-
-        # Update the JavaScript variable
-        if (
-            hasattr(self, "_web_view")
-            and config.MAPBOX_TOKEN != "YOUR_MAPBOX_TOKEN_HERE"
-        ):
-            js = f"window.followVehicle = {str(follow).lower()};"
-            self._web_view.page().runJavaScript(js)
-
-    def set_zoom(self, zoom):
-        """
-        Set the map zoom level.
-
-        Args:
-            zoom: Zoom level (higher values = closer)
-        """
-        self._zoom = zoom
-
-        # Update the map zoom
-        if (
-            hasattr(self, "_web_view")
-            and config.MAPBOX_TOKEN != "YOUR_MAPBOX_TOKEN_HERE"
-        ):
-            js = f"map.setZoom({zoom});"
-            self._web_view.page().runJavaScript(js)
+        super().closeEvent(event)

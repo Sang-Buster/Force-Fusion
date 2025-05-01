@@ -61,10 +61,6 @@ class DashboardController(QObject):
         # Connect tire force signals
         self.sensor_provider.tire_forces_changed.connect(self._on_tire_forces_changed)
 
-        # Connect time signals
-        self.sensor_provider.current_time_changed.connect(self._on_current_time_changed)
-        self.sensor_provider.elapsed_time_changed.connect(self._on_elapsed_time_changed)
-
     def _on_position_changed(self, latitude, longitude):
         """
         Process position updates.
@@ -73,9 +69,6 @@ class DashboardController(QObject):
             latitude: Latitude in degrees
             longitude: Longitude in degrees
         """
-        # Update the position display
-        self.main_window.gps_label.setText(f"GPS: {latitude:.6f}°, {longitude:.6f}°")
-
         # Update the minimap
         self.main_window.minimap.update_position(latitude, longitude)
 
@@ -175,24 +168,6 @@ class DashboardController(QObject):
         for position, force in forces.items():
             if position in self.main_window.tire_forces:
                 self.main_window.tire_forces[position].set_force(force)
-
-    def _on_current_time_changed(self, time_str):
-        """
-        Process current time updates.
-
-        Args:
-            time_str: Formatted time string
-        """
-        self.main_window.current_time_label.setText(f"Current Time: {time_str}")
-
-    def _on_elapsed_time_changed(self, time_str):
-        """
-        Process elapsed time updates.
-
-        Args:
-            time_str: Formatted elapsed time string
-        """
-        self.main_window.elapsed_time_label.setText(f"Time Elapsed: {time_str}")
 
     def start_recording(self):
         """Start recording trajectory data."""

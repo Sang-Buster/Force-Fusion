@@ -7,9 +7,9 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
-from .controller import DashboardController
-from .sensors import SensorProvider
-from .ui_main_window import MainWindow
+from force_fusion.controller import DashboardController
+from force_fusion.sensors import SensorProvider
+from force_fusion.ui_main_window import MainWindow
 
 
 def main():

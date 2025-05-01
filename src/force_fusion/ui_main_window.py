@@ -2,25 +2,24 @@
 Main window UI definition for Force-Fusion dashboard.
 """
 
-from PyQt5.QtCore import QSize, Qt
+from PyQt5.QtCore import QSize
 from PyQt5.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
-    QLabel,
     QMainWindow,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
 
-from . import config
-from .widgets.attitude import AttitudeWidget
-from .widgets.heading import HeadingWidget
-from .widgets.mapbox_view import MapboxView
-from .widgets.minimap import MinimapWidget
-from .widgets.speedometer import SpeedometerWidget
-from .widgets.tire_force import TireForceWidget
+from force_fusion import config
+from force_fusion.widgets.attitude import AttitudeWidget
+from force_fusion.widgets.heading import HeadingWidget
+from force_fusion.widgets.mapbox_view import MapboxView
+from force_fusion.widgets.minimap import MinimapWidget
+from force_fusion.widgets.speedometer import SpeedometerWidget
+from force_fusion.widgets.tire_force import TireForceWidget
 
 
 class Ui_MainWindow:
@@ -118,32 +117,11 @@ class Ui_MainWindow:
         self.mapFrame = QFrame()
         self.mapLayout = QVBoxLayout(self.mapFrame)
 
-        # Info section on top of map
-        self.infoFrame = QFrame()
-        self.infoLayout = QVBoxLayout(self.infoFrame)
-
-        # GPS label
-        self.gpsLabel = QLabel("GPS: Lat, Lon in degrees")
-        self.gpsLabel.setAlignment(Qt.AlignLeft)
-
-        # Time labels
-        self.currentTimeLabel = QLabel("Current Time: 00h:00min:00sec")
-        self.currentTimeLabel.setAlignment(Qt.AlignLeft)
-
-        self.elapsedTimeLabel = QLabel("Time Elapsed: 00h:00min:00sec")
-        self.elapsedTimeLabel.setAlignment(Qt.AlignLeft)
-
-        # Add labels to info layout
-        self.infoLayout.addWidget(self.gpsLabel)
-        self.infoLayout.addWidget(self.currentTimeLabel)
-        self.infoLayout.addWidget(self.elapsedTimeLabel)
-
         # Create Mapbox view
         self.mapboxView = MapboxView()
         self.mapboxView.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
-        # Add info and map to map layout
-        self.mapLayout.addWidget(self.infoFrame)
+        # Add map to map layout
         self.mapLayout.addWidget(self.mapboxView)
 
         # Add frames to bottom layout
@@ -157,17 +135,12 @@ class Ui_MainWindow:
             f"background-color: {config.BACKGROUND_COLOR};"
         )
 
-        # Style labels
-        for label in [self.gpsLabel, self.currentTimeLabel, self.elapsedTimeLabel]:
-            label.setStyleSheet(f"color: {config.TEXT_COLOR}; font-size: 14px;")
-
         # Style frames
         for frame in [
             self.topFrame,
             self.bottomFrame,
             self.tireForceFrame,
             self.mapFrame,
-            self.infoFrame,
         ]:
             frame.setStyleSheet("border: none;")
 
@@ -193,6 +166,3 @@ class MainWindow(QMainWindow):
             "RR": self.ui.tireForceRearRight,
         }
         self.mapbox = self.ui.mapboxView
-        self.gps_label = self.ui.gpsLabel
-        self.current_time_label = self.ui.currentTimeLabel
-        self.elapsed_time_label = self.ui.elapsedTimeLabel

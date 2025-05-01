@@ -8,7 +8,7 @@ from PyQt5.QtCore import QPointF, QRectF, Qt
 from PyQt5.QtGui import QColor, QPainter, QPainterPath, QPen
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
-from .. import config
+from force_fusion import config
 
 
 class MinimapWidget(QWidget):

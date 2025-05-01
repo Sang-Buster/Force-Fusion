@@ -8,7 +8,7 @@ from PyQt5.QtCore import QRectF, Qt
 from PyQt5.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
-from .. import config
+from force_fusion import config
 
 
 class TireForceWidget(QWidget):

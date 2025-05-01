@@ -9,7 +9,7 @@ from PyQt5.QtCore import QPointF, QRectF, Qt
 from PyQt5.QtGui import QColor, QFont, QPainter, QPainterPath, QPen, QPixmap, QPolygonF
 from PyQt5.QtWidgets import QSizePolicy, QWidget
 
-from .. import config
+from force_fusion import config
 
 # Define resource paths relative to this file
 CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))  # widgets/
