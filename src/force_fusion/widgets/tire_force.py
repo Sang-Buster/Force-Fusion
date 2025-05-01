@@ -33,13 +33,13 @@ class TireForceWidget(QWidget):
         super().__init__(parent)
 
         # Current force value and position
-        self._force = config.TIRE_FORCE_NORMAL  # N
+        self._force = 0.0  # Start with 0 N
         self._position = position
 
         # Force visualization settings
-        self._min_force = config.TIRE_FORCE_MIN
-        self._max_force = config.TIRE_FORCE_MAX
-        self._normal_force = config.TIRE_FORCE_NORMAL
+        self._min_force = 0.0  # Minimum force (N)
+        self._max_force = 2500.0  # Maximum force (N)
+        self._normal_force = 2500.0  # Reference for 100% force
 
         # Set widget properties
         self.setMinimumSize(150, 150)
@@ -80,8 +80,14 @@ class TireForceWidget(QWidget):
 
         # Calculate radius based on force value (using square root for better visual scaling)
         max_radius = min(width, height) // 2 - 20
-        normalized_force = math.sqrt(self._force / self._max_force)
-        radius = max_radius * normalized_force
+
+        # Calculate normalized force (0.0 to 1.0)
+        if self._max_force <= 0:
+            normalized_force = 0
+        else:
+            normalized_force = self._force / self._max_force
+
+        radius = max_radius * math.sqrt(normalized_force)
 
         # Draw background circle
         self._draw_background_circle(painter, center_x, center_y, max_radius)
@@ -117,18 +123,39 @@ class TireForceWidget(QWidget):
 
     def _draw_force_circle(self, painter, center_x, center_y, radius):
         """Draw the circle representing the current force."""
-        # Determine color based on force level
-        if self._force < self._normal_force * 0.7:
-            # Low force (less than 70% of normal) - warning
-            color = QColor(config.TIRE_FORCE_COLOR_LOW)
-        elif self._force > self._normal_force * 1.3:
-            # High force (more than 130% of normal) - danger
-            color = QColor(config.TIRE_FORCE_COLOR_HIGH)
-        else:
-            # Normal force range
-            color = QColor(config.TIRE_FORCE_COLOR_NORMAL)
+        # Calculate force percentage from 0 to 100%
+        force_percent = (self._force / self._max_force) * 100
 
-        # Create radial gradient
+        # Determine color based on force level
+        # 0-25%: Green
+        # 25-50%: Green to Yellow-Green
+        # 50-75%: Yellow-Green to Yellow
+        # 75-100%: Yellow to Red
+
+        if force_percent <= 25:
+            # Green (0-25%)
+            r = int(40 + (force_percent / 25) * 170)  # 40 to 210
+            g = int(220)  # Bright green stays constant
+            b = int(40)  # Low blue component
+        elif force_percent <= 50:
+            # Green to Yellow-Green (25-50%)
+            r = int(210 + (force_percent - 25) / 25 * 30)  # 210 to 240
+            g = int(220)  # Bright green stays constant
+            b = int(40 - (force_percent - 25) / 25 * 20)  # 40 to 20
+        elif force_percent <= 75:
+            # Yellow-Green to Yellow (50-75%)
+            r = int(240 + (force_percent - 50) / 25 * 15)  # 240 to 255
+            g = int(220 - (force_percent - 50) / 25 * 40)  # 220 to 180
+            b = int(20 - (force_percent - 50) / 25 * 10)  # 20 to 10
+        else:
+            # Yellow to Red (75-100%)
+            r = 255  # Red stays at maximum
+            g = int(180 - (force_percent - 75) / 25 * 180)  # 180 to 0
+            b = int(10 - (force_percent - 75) / 25 * 10)  # 10 to 0
+
+        color = QColor(r, g, b)
+
+        # Create radial gradient with dynamic colors
         gradient = QRadialGradient(center_x, center_y, radius)
         gradient.setColorAt(0, color.lighter(130))
         gradient.setColorAt(1, color)
@@ -171,7 +198,9 @@ class TireForceWidget(QWidget):
 
         # Calculate and display percentage of normal force
         percent = (self._force / self._normal_force) * 100
-        percent_text = f"{percent:.0f}%"
+        # Cap the percentage display at 100% for clarity
+        display_percent = min(100, percent)
+        percent_text = f"{display_percent:.0f}%"
 
         # Draw percentage below force value
         percent_rect = QRectF(center_x - 50, center_y + max_radius * 0.9, 100, 20)

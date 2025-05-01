@@ -235,6 +235,7 @@ class AttitudeWidget(QWidget):
         """Draw the pitch/roll degree scales around the periphery."""
         scale_radius = radius * 0.85  # Slightly inset from edge
 
+        # Draw major degree markers (every 10 degrees)
         for i in range(5):  # 0, 10, 20, 30, 40 degrees
             angle_value = i * 10
 
@@ -284,7 +285,35 @@ class AttitudeWidget(QWidget):
                 text_rect = QRectF(text_x - 15, text_y - 15, 30, 30)
                 painter.drawText(text_rect, Qt.AlignCenter, str(angle_value))
 
-            # Remove side degree markings
+        # Draw smaller tick marks every 5 degrees between major markers
+        painter.setPen(QPen(Qt.white, 0.5))
+        for i in range(1, 8):  # 5, 15, 25, 35 degrees
+            angle_value = i * 5
+
+            # Skip values that are already drawn with major ticks
+            if angle_value % 10 == 0:
+                continue
+
+            # Draw smaller ticks in all four quadrants
+            for quadrant in range(4):
+                # Calculate position based on quadrant
+                if quadrant == 0:  # Top-right
+                    angle_rad = math.radians(90 - angle_value)
+                elif quadrant == 1:  # Top-left
+                    angle_rad = math.radians(90 + angle_value)
+                elif quadrant == 2:  # Bottom-left
+                    angle_rad = math.radians(270 - angle_value)
+                else:  # Bottom-right
+                    angle_rad = math.radians(270 + angle_value)
+
+                x = center_x + scale_radius * math.cos(angle_rad)
+                y = center_y - scale_radius * math.sin(angle_rad)
+
+                # Draw smaller tick mark (shorter than minor ticks)
+                tick_length = 3
+                inner_x = center_x + (scale_radius - tick_length) * math.cos(angle_rad)
+                inner_y = center_y - (scale_radius - tick_length) * math.sin(angle_rad)
+                painter.drawLine(int(inner_x), int(inner_y), int(x), int(y))
 
     def _draw_car_indicators(self, painter, center_x, center_y, radius):
         """Draw the car indicators for pitch and roll."""
@@ -331,7 +360,8 @@ class AttitudeWidget(QWidget):
         # Draw pitch value (outside the rotated context)
         painter.setPen(Qt.white)
         painter.setFont(QFont("Arial", 14, QFont.Bold))
-        pitch_text = f"{int(self._pitch)}"
+        # Format pitch value with 2 decimal places instead of integer
+        pitch_text = f"{self._pitch:.2f}"
         text_rect = QRectF(center_x - 40, side_car_y + car_size * 0.7, 80, 30)
         painter.drawText(text_rect, Qt.AlignCenter, pitch_text)
 
@@ -373,9 +403,9 @@ class AttitudeWidget(QWidget):
         # Draw roll value
         painter.setPen(Qt.white)
         painter.setFont(QFont("Arial", 14, QFont.Bold))
-        roll_text = (
-            f"{int(-self._roll)}"  # Negative to match reference image convention
-        )
+        # Format roll value with 2 decimal places instead of integer
+        # Note: using -self._roll to match reference image convention
+        roll_text = f"{-self._roll:.2f}"
         text_rect = QRectF(center_x - 40, roll_car_y - car_size * 0.7 - 30, 80, 30)
         painter.drawText(text_rect, Qt.AlignCenter, roll_text)
 

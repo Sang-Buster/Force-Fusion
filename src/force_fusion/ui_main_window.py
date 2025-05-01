@@ -37,8 +37,8 @@ class Ui_MainWindow:
 
         # Main layout is vertical
         self.mainLayout = QVBoxLayout(self.centralWidget)
-        self.mainLayout.setContentsMargins(10, 10, 10, 10)
-        self.mainLayout.setSpacing(10)
+        self.mainLayout.setContentsMargins(10, 5, 10, 10)
+        self.mainLayout.setSpacing(5)
 
         # Top section - Horizontal layout for circular widgets
         self.topFrame = QFrame()
@@ -51,8 +51,16 @@ class Ui_MainWindow:
         self.bottomLayout = QHBoxLayout(self.bottomFrame)
 
         # Add frames to main layout
-        self.mainLayout.addWidget(self.topFrame, 3)
-        self.mainLayout.addWidget(self.bottomFrame, 2)
+        self.mainLayout.addWidget(self.topFrame, 2)
+        self.mainLayout.addWidget(self.bottomFrame, 3)
+
+        # Reduce spacing and margins for more compact layout
+        self.mainLayout.setContentsMargins(10, 5, 10, 10)
+        self.mainLayout.setSpacing(5)
+
+        # Add margin between title and widgets in the top row
+        self.topLayout.setContentsMargins(0, 20, 0, 0)
+        self.topLayout.setSpacing(5)
 
         # Create widgets
         self.setupTopWidgets()

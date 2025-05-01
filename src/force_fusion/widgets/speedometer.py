@@ -123,6 +123,7 @@ class SpeedometerWidget(QWidget):
 
         # Draw title
         painter.setPen(QColor(config.TEXT_COLOR))
+        painter.setFont(QFont("Arial", 10))
         painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Speedometer")
 
     def _draw_background(self, painter, center_x, center_y, radius):
@@ -155,6 +156,7 @@ class SpeedometerWidget(QWidget):
         # Set up pens
         major_tick_pen = QPen(QColor(200, 200, 200), 2)
         minor_tick_pen = QPen(QColor(150, 150, 150), 1)
+        micro_tick_pen = QPen(QColor(100, 100, 100), 0.5)  # For the smallest ticks
         label_pen = QPen(QColor(config.TEXT_COLOR), 1)
 
         # Calculate angles and values
@@ -162,6 +164,7 @@ class SpeedometerWidget(QWidget):
         speed_range = self._max_speed - self._min_speed
         major_step = 20  # Show major ticks every 20 km/h
         minor_step = 10  # Show minor ticks every 10 km/h
+        micro_step = 5  # Show micro ticks every 5 km/h
 
         # Draw arc
         arc_rect = QRectF(
@@ -196,20 +199,28 @@ class SpeedometerWidget(QWidget):
             painter.setPen(QPen(color, 3))
             painter.drawArc(arc_rect, segment_start, segment_span)
 
-        # Draw ticks and labels
-        for speed in range(int(self._min_speed), int(self._max_speed) + 1, minor_step):
+        # Draw ticks and labels for major and minor steps
+        for speed in range(int(self._min_speed), int(self._max_speed) + 1, micro_step):
             # Calculate angle for this speed
             angle = (
                 self._min_angle + (speed - self._min_speed) * angle_range / speed_range
             )
             angle_rad = math.radians(angle)
 
-            # Calculate tick positions
-            inner_x = center_x + (radius * 0.7) * math.cos(angle_rad)
-            inner_y = center_y - (radius * 0.7) * math.sin(angle_rad)
-
-            # Determine if this is a major tick
+            # Determine tick type (major, minor, or micro)
             is_major = speed % major_step == 0
+            is_minor = speed % minor_step == 0 and not is_major
+
+            # Calculate inner position (different for each tick type)
+            if is_major:
+                inner_radius = radius * 0.7  # Major ticks start farther in
+            elif is_minor:
+                inner_radius = radius * 0.75  # Minor ticks start in the middle
+            else:  # micro tick
+                inner_radius = radius * 0.78  # Micro ticks are shortest
+
+            inner_x = center_x + inner_radius * math.cos(angle_rad)
+            inner_y = center_y - inner_radius * math.sin(angle_rad)
 
             if is_major:
                 # Draw major tick
@@ -238,9 +249,15 @@ class SpeedometerWidget(QWidget):
                 )
 
                 painter.drawText(label_rect, Qt.AlignCenter, text)
-            else:
+            elif is_minor:
                 # Draw minor tick
                 painter.setPen(minor_tick_pen)
+                outer_x = center_x + (radius * 0.82) * math.cos(angle_rad)
+                outer_y = center_y - (radius * 0.82) * math.sin(angle_rad)
+                painter.drawLine(int(inner_x), int(inner_y), int(outer_x), int(outer_y))
+            else:
+                # Draw micro tick (smallest)
+                painter.setPen(micro_tick_pen)
                 outer_x = center_x + (radius * 0.8) * math.cos(angle_rad)
                 outer_y = center_y - (radius * 0.8) * math.sin(angle_rad)
                 painter.drawLine(int(inner_x), int(inner_y), int(outer_x), int(outer_y))
@@ -275,7 +292,6 @@ class SpeedometerWidget(QWidget):
         speed_font = QFont("Arial", 16, QFont.Bold)
         painter.setFont(speed_font)
         speed_metrics = QFontMetrics(speed_font)
-        speed_text_width = speed_metrics.horizontalAdvance(speed_text)
         speed_text_height = speed_metrics.height()
 
         # --- Acceleration ---
@@ -287,45 +303,30 @@ class SpeedometerWidget(QWidget):
         accel_font = QFont("Arial", 10)
         painter.setFont(accel_font)
         accel_metrics = QFontMetrics(accel_font)
-        accel_text_width = accel_metrics.horizontalAdvance(accel_text)
         accel_text_height = accel_metrics.height()
 
         # --- Layout ---
-        # Define overall box dimensions needed for both lines
-        total_text_height = speed_text_height + accel_text_height + 5  # Add padding
-        max_text_width = max(speed_text_width, accel_text_width)
-        readout_width = max(radius * 0.7, max_text_width + 20)  # Ensure box fits text
-        readout_height = total_text_height + 10  # Add padding
+        # Define positions for text
+        total_text_height = speed_text_height + accel_text_height + 10  # Add padding
 
-        # Position the box above the center hub, slightly higher
-        readout_rect = QRectF(
-            center_x - readout_width / 2,
-            center_y - radius * 0.3 - readout_height,
-            readout_width,
-            readout_height,
-        )
-
-        # Draw background for the text block
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.setBrush(QColor(30, 30, 30))
-        painter.drawRoundedRect(readout_rect, 5, 5)
-
-        # Draw speed text centered horizontally, at the top of the box
+        # Position the text above the center hub
         speed_rect = QRectF(
-            readout_rect.x(),
-            readout_rect.y() + 5,  # Padding from top
-            readout_rect.width(),
+            center_x - radius * 0.5,
+            center_y - radius * 0.4 - total_text_height,
+            radius * 1.0,
             speed_text_height,
         )
+
+        # Draw speed text
         painter.setFont(speed_font)
         painter.setPen(QColor(config.TEXT_COLOR))
         painter.drawText(speed_rect, Qt.AlignCenter, speed_text)
 
         # Draw acceleration text centered horizontally, below the speed text
         accel_rect = QRectF(
-            readout_rect.x(),
+            center_x - radius * 0.5,
             speed_rect.bottom() + 5,  # Padding between lines
-            readout_rect.width(),
+            radius * 1.0,
             accel_text_height,
         )
         painter.setFont(accel_font)
@@ -340,7 +341,7 @@ class SpeedometerWidget(QWidget):
         # Position bar further down but slightly higher than before
         bar_rect = QRectF(
             center_x - bar_width / 2,
-            center_y + radius * 0.2,  # Adjusted position
+            center_y + radius * 0.1,  # Adjusted position
             bar_width,
             bar_height,
         )
@@ -357,12 +358,43 @@ class SpeedometerWidget(QWidget):
             center_line_x, int(bar_rect.top()), center_line_x, int(bar_rect.bottom())
         )
 
-        # Calculate acceleration value position
-        accel_limit = 5.0  # m/s²
-        normalized_accel = (
-            max(-accel_limit, min(accel_limit, self._acceleration)) / accel_limit
-        )
-        accel_pos_x = center_x + normalized_accel * (bar_width / 2 - 2)
+        # Calculate acceleration in g-force (1g = 9.81 m/s²)
+        accel_g = self._acceleration / 9.81
+
+        # Draw tick marks for g-force values
+        g_marks = [-1.0, -0.5, 0, 0.5, 1.0]
+        tick_height = bar_height * 0.6
+
+        painter.setPen(QPen(QColor(150, 150, 150), 1))
+        for g in g_marks:
+            # Calculate x position based on g-force
+            g_limit = 1.0  # Maximum g-force displayed
+            normalized_g = g / g_limit
+            x_pos = center_x + normalized_g * (bar_width / 2 - 4)
+
+            # Draw tick mark
+            painter.drawLine(
+                int(x_pos),
+                int(bar_rect.top() + (bar_height - tick_height) / 2),
+                int(x_pos),
+                int(bar_rect.top() + (bar_height - tick_height) / 2 + tick_height),
+            )
+
+            # Draw g-force value label for full g values
+            if g == -1.0 or g == 0 or g == 1.0:
+                label = f"{g:.1f}g"
+                metrics = QFontMetrics(QFont("Arial", 6))
+                text_width = metrics.horizontalAdvance(label)
+
+                painter.setFont(QFont("Arial", 6))
+                painter.drawText(
+                    int(x_pos - text_width / 2), int(bar_rect.bottom() + 12), label
+                )
+
+        # Calculate position for acceleration indicator
+        g_limit = 1.0  # Maximum g-force displayed on bar
+        normalized_g = max(-g_limit, min(g_limit, accel_g)) / g_limit
+        accel_pos_x = center_x + normalized_g * (bar_width / 2 - 4)
 
         # Draw acceleration indicator
         indicator_width = 6
@@ -383,13 +415,13 @@ class SpeedometerWidget(QWidget):
         painter.setBrush(accel_color)
         painter.drawRoundedRect(indicator_rect, 2, 2)
 
-        # Draw acceleration label
+        # Draw acceleration label with both m/s² and g values
         painter.setPen(QColor(config.TEXT_COLOR))
-        accel_text = f"{self._acceleration:.1f} m/s²"
+        accel_text = f"{self._acceleration:.2f} m/s²"
 
         # Draw text below bar
         label_rect = QRectF(
-            bar_rect.left(), bar_rect.bottom() + 2, bar_rect.width(), 20
+            bar_rect.left(), bar_rect.bottom() + 15, bar_rect.width(), 20
         )
         painter.setFont(QFont("Arial", 8))
         painter.drawText(label_rect, Qt.AlignCenter, accel_text)

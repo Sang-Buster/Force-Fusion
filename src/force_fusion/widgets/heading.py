@@ -91,6 +91,7 @@ class HeadingWidget(QWidget):
 
         # Draw title
         painter.setPen(QColor(config.TEXT_COLOR))
+        painter.setFont(QFont("Arial", 10))
         painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Course over Ground")
 
     def _draw_compass_rose(self, painter, center_x, center_y, radius):
@@ -238,28 +239,32 @@ class HeadingWidget(QWidget):
         # Set up font
         heading_font = QFont("Arial", 16, QFont.Bold)
         painter.setFont(heading_font)
+        heading_metrics = painter.fontMetrics()
 
-        # Define heading box
-        box_width = radius * 0.8
-        box_height = radius * 0.25
-        box_rect = QRectF(
-            center_x - box_width / 2, center_y + radius * 0.1, box_width, box_height
+        # Format heading text
+        heading_text = f"{self._heading:.1f}°"
+
+        # Calculate text position - centered below the compass
+        heading_rect = QRectF(
+            center_x - radius * 0.5,
+            center_y + radius * 0.2,
+            radius * 1.0,
+            heading_metrics.height(),
         )
-
-        # Draw background
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.setBrush(QColor(30, 30, 30))
-        painter.drawRoundedRect(box_rect, 5, 5)
 
         # Draw heading text
         painter.setPen(QColor(config.TEXT_COLOR))
-        heading_text = f"{self._heading:.1f}°"
-        painter.drawText(box_rect, Qt.AlignCenter, heading_text)
+        painter.drawText(heading_rect, Qt.AlignCenter, heading_text)
 
         # Add compass direction label
         direction_text = self._get_direction_text(self._heading)
+
+        # Position the direction text below the heading
         direction_rect = QRectF(
-            box_rect.x(), box_rect.bottom() + 2, box_rect.width(), 20
+            heading_rect.x(),
+            heading_rect.bottom() + 5,
+            heading_rect.width(),
+            heading_metrics.height(),
         )
 
         painter.setFont(QFont("Arial", 10))

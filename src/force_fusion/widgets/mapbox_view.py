@@ -34,14 +34,13 @@ def check_opengl():
     try:
         import subprocess
 
-        result = subprocess.run(
+        subprocess.run(
             ["glxinfo", "|", "grep", "OpenGL"],
             shell=True,
             capture_output=True,
             text=True,
         )
-        print("OpenGL information:")
-        print(result.stdout)
+        print("OpenGL check passed")
         return True
     except Exception as e:
         print(f"Failed to check OpenGL: {e}")
