@@ -3,10 +3,11 @@ Sensor data provider that emits signals for all dashboard data channels.
 """
 
 import math
-import random
 from datetime import datetime
 
 from PyQt5.QtCore import QObject, QTimer, pyqtSignal
+
+from force_fusion import config
 
 
 class SensorProvider(QObject):
@@ -55,11 +56,26 @@ class SensorProvider(QObject):
         self._roll = 0.0  # degrees
         self._heading = 0.0  # degrees
         self._tire_forces = {
-            "FL": 2500.0,  # N
-            "FR": 2500.0,
-            "RL": 2500.0,
-            "RR": 2500.0,
+            "FL": config.TIRE_FORCE_NORMAL,  # N
+            "FR": config.TIRE_FORCE_NORMAL,
+            "RL": config.TIRE_FORCE_NORMAL,
+            "RR": config.TIRE_FORCE_NORMAL,
         }
+
+        # For animations
+        self._animation_counter = 0
+        self._phase_offsets = {
+            "FL": 0,
+            "FR": 25,
+            "RL": 50,
+            "RR": 75,
+        }  # Offset percentages
+        self._animation_cycle_period = 150  # Make animation faster (was 300)
+
+        # Speed and attitude animation
+        self._speed_animation_cycle = 180  # 18 seconds at 100ms timer
+        self._attitude_animation_cycle = 200  # 20 seconds at 100ms timer
+        self._heading_animation_cycle = 240  # 24 seconds at 100ms timer
 
         # Start time tracking
         self._start_time = datetime.now()
@@ -83,7 +99,9 @@ class SensorProvider(QObject):
         from force_fusion import config
 
         # Start timers with configured intervals
-        self._position_timer.start(config.GPS_UPDATE_INTERVAL)
+        self._position_timer.start(
+            100
+        )  # Update position more frequently (was config.GPS_UPDATE_INTERVAL which is 1000ms)
         self._speed_timer.start(config.SPEED_UPDATE_INTERVAL)
         self._attitude_timer.start(config.ATTITUDE_UPDATE_INTERVAL)
         self._tire_force_timer.start(config.TIRE_FORCE_UPDATE_INTERVAL)
@@ -141,24 +159,24 @@ class SensorProvider(QObject):
     def _update_speed(self):
         """Update speed and acceleration values and emit signals."""
         if self.data_source == "simulated":
-            # Simulate realistic vehicle dynamics
+            # Use animation counter for smooth oscillation
+            self._animation_counter += 1
+            counter = self._animation_counter
 
-            # Randomly adjust acceleration within realistic bounds
-            self._acceleration += random.uniform(-0.5, 0.5)
-            # Limit acceleration to realistic values
-            self._acceleration = max(-5.0, min(5.0, self._acceleration))
+            # Animate speed to go up and down smoothly
+            cycle_period = self._speed_animation_cycle
+            cycle_position = counter % cycle_period
 
-            # Update speed based on acceleration
-            speed_change = (
-                self._acceleration * (self._speed_timer.interval() / 1000.0) * 3.6
-            )  # m/s² to km/h
-            self._speed += speed_change
-
-            # Ensure speed is positive or zero (no reverse for simplicity)
-            self._speed = max(0.0, self._speed)
-
-            # Cap the speed at a maximum value
-            self._speed = min(200.0, self._speed)
+            # Sinusoidal variation for smoother transitions
+            # First half: accelerating, Second half: decelerating
+            if cycle_position < cycle_period / 2:
+                ratio = cycle_position / (cycle_period / 2)
+                self._speed = ratio * config.SPEED_MAX
+                self._acceleration = 2.0  # Positive acceleration when speed increasing
+            else:
+                ratio = (cycle_position - cycle_period / 2) / (cycle_period / 2)
+                self._speed = (1 - ratio) * config.SPEED_MAX
+                self._acceleration = -2.0  # Negative acceleration when speed decreasing
 
         # Emit the signals
         self.speed_changed.emit(self._speed)
@@ -167,69 +185,84 @@ class SensorProvider(QObject):
     def _update_attitude(self):
         """Update pitch and roll values and emit signals."""
         if self.data_source == "simulated":
-            # Simulate vehicle attitude changes
-            # In reality, this would depend on acceleration, turning, and road grade
+            # Use animation counter for smooth oscillation
+            counter = self._animation_counter
 
-            # Update pitch (affected by acceleration and road grade)
-            pitch_change = random.uniform(-0.5, 0.5)
-            if self._acceleration > 1.0:
-                pitch_change -= self._acceleration * 0.2  # Nose up during acceleration
-            elif self._acceleration < -1.0:
-                pitch_change += (
-                    abs(self._acceleration) * 0.2
-                )  # Nose down during braking
+            # Animate pitch - full range from min to max and back
+            pitch_cycle = self._attitude_animation_cycle
+            pitch_position = counter % pitch_cycle
 
-            self._pitch += pitch_change
-            self._pitch = max(-20.0, min(20.0, self._pitch))  # Limit pitch range
+            if pitch_position < pitch_cycle / 2:
+                ratio = pitch_position / (pitch_cycle / 2)
+                self._pitch = config.PITCH_MIN + ratio * (
+                    config.PITCH_MAX - config.PITCH_MIN
+                )
+            else:
+                ratio = (pitch_position - pitch_cycle / 2) / (pitch_cycle / 2)
+                self._pitch = config.PITCH_MAX - ratio * (
+                    config.PITCH_MAX - config.PITCH_MIN
+                )
 
-            # Update roll (affected by turning)
-            # Simulate turning by changing heading and corresponding roll
-            heading_change = random.uniform(-1.0, 1.0)
-            self._heading = (self._heading + heading_change) % 360.0
+            # Animate roll - alternate between min and max
+            roll_cycle = (
+                self._attitude_animation_cycle * 0.7
+            )  # Different period for variety
+            roll_position = counter % roll_cycle
 
-            # Roll is proportional to rate of heading change
-            self._roll = heading_change * 5.0
-            self._roll = max(-30.0, min(30.0, self._roll))  # Limit roll range
+            if roll_position < roll_cycle / 2:
+                ratio = roll_position / (roll_cycle / 2)
+                self._roll = config.ROLL_MIN + ratio * (
+                    config.ROLL_MAX - config.ROLL_MIN
+                )
+            else:
+                ratio = (roll_position - roll_cycle / 2) / (roll_cycle / 2)
+                self._roll = config.ROLL_MAX - ratio * (
+                    config.ROLL_MAX - config.ROLL_MIN
+                )
+
+            # Animate heading - full 360 rotation
+            heading_cycle = self._heading_animation_cycle
+            heading_position = counter % heading_cycle
+
+            if heading_position < heading_cycle / 2:
+                ratio = heading_position / (heading_cycle / 2)
+                self._heading = ratio * 360
+            else:
+                ratio = (heading_position - heading_cycle / 2) / (heading_cycle / 2)
+                self._heading = (1 - ratio) * 360
 
         # Emit the signals
         self.pitch_changed.emit(self._pitch)
         self.roll_changed.emit(self._roll)
+        self.heading_changed.emit(self._heading)
 
     def _update_tire_forces(self):
         """Update tire normal forces and emit signal."""
         if self.data_source == "simulated":
-            # Simulate tire load changes based on vehicle dynamics
+            # Update animation counter
+            self._animation_counter += 1
+            counter = self._animation_counter
 
-            # Calculate weight transfer based on acceleration, pitch, and roll
-            lateral_transfer = self._roll * 50.0  # Roll affects left-right distribution
-            longitudinal_transfer = (
-                self._acceleration * 100.0
-            )  # Acceleration affects front-rear distribution
+            # Maximum force and cycle period
+            max_force = config.TIRE_FORCE_MAX  # Maximum force in Newtons
+            cycle_period = self._animation_cycle_period
 
-            # Base normal force per tire (vehicle weight / 4)
-            base_force = 2500.0
+            # Update each tire with proper phase offset
+            for position in ["FL", "FR", "RL", "RR"]:
+                # Apply phase offset for each tire
+                offset = self._phase_offsets[position]
+                adjusted_counter = (
+                    counter + offset * cycle_period / 100
+                ) % cycle_period
 
-            # Apply weight transfers
-            self._tire_forces["FL"] = (
-                base_force - longitudinal_transfer + lateral_transfer
-            )
-            self._tire_forces["FR"] = (
-                base_force - longitudinal_transfer - lateral_transfer
-            )
-            self._tire_forces["RL"] = (
-                base_force + longitudinal_transfer + lateral_transfer
-            )
-            self._tire_forces["RR"] = (
-                base_force + longitudinal_transfer - lateral_transfer
-            )
-
-            # Add some random variation
-            for tire in self._tire_forces:
-                self._tire_forces[tire] += random.uniform(-50.0, 50.0)
-                # Ensure forces stay within realistic bounds
-                self._tire_forces[tire] = max(
-                    500.0, min(4500.0, self._tire_forces[tire])
-                )
+                # First half of cycle: 0 to max force (monotonically increasing)
+                if adjusted_counter < cycle_period / 2:
+                    ratio = adjusted_counter / (cycle_period / 2)
+                    self._tire_forces[position] = ratio * max_force
+                # Second half of cycle: max force to 0 (monotonically decreasing)
+                else:
+                    ratio = (adjusted_counter - cycle_period / 2) / (cycle_period / 2)
+                    self._tire_forces[position] = (1 - ratio) * max_force
 
         # Emit the signal
         self.tire_forces_changed.emit(self._tire_forces.copy())

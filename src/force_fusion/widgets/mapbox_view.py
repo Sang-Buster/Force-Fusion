@@ -330,10 +330,10 @@ class MapboxView(QWidget):
             with open(html_path, "r") as f:
                 html_content = f.read()
 
-            # Replace the token if needed
-            if "YOUR_MAPBOX_TOKEN_PLACEHOLDER" in html_content:
+            # Replace only the token if needed - no style replacement
+            if "YOUR_MAPBOX_TOKEN_HERE" in html_content:
                 html_content = html_content.replace(
-                    "YOUR_MAPBOX_TOKEN_PLACEHOLDER", config.MAPBOX_TOKEN
+                    "YOUR_MAPBOX_TOKEN_HERE", config.MAPBOX_TOKEN
                 )
 
                 # Write the modified HTML back to the file

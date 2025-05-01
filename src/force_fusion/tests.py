@@ -206,7 +206,14 @@ def test_tire_force():
     """Test the tire force widget."""
     app = QApplication(sys.argv)
     layout = QWidget()
-    main_layout = QHBoxLayout(layout)
+    main_layout = QVBoxLayout(
+        layout
+    )  # Changed from QHBoxLayout to QVBoxLayout for better spacing
+
+    # Add a title with margin
+    title_layout = QVBoxLayout()
+    title_layout.addSpacing(20)  # Add space above the grid
+    main_layout.addLayout(title_layout)
 
     # Create four tire force widgets
     fl_widget = TireForceWidget("FL")
@@ -216,6 +223,7 @@ def test_tire_force():
 
     # Add them to a grid layout
     grid_layout = QVBoxLayout()
+    grid_layout.addSpacing(20)  # Add spacing between title and widgets
     row1 = QHBoxLayout()
     row2 = QHBoxLayout()
 
@@ -240,64 +248,33 @@ def test_tire_force():
     # Test data
     test_data = {
         "counter": 0,
-        "forces": {"FL": 2500.0, "FR": 2500.0, "RL": 2500.0, "RR": 2500.0},
-        "roll": 0.0,
-        "acceleration": 0.0,
+        "forces": {"FL": 0.0, "FR": 0.0, "RL": 0.0, "RR": 0.0},  # Start all at 0
+        "phase_offsets": {"FL": 0, "FR": 25, "RL": 50, "RR": 75},  # Offset percentages
     }
 
     def update_data():
+        """Update force values in a clear cycle from 0 to max and back to 0"""
         test_data["counter"] += 1
         counter = test_data["counter"]
 
         # Maximum force and cycle period
         max_force = 2500.0  # Maximum force in Newtons
-        cycle_period = (
-            300  # Longer period for slower animation (3 seconds at 100ms timer)
-        )
+        cycle_period = 300  # Total cycle time (3 seconds at 100ms timer)
 
-        # Create a clear visual cycle for each tire
-        # Use 4 distinct phases (one for each tire) for maximum visual effect
-        phase_offset = cycle_period // 4  # 25% of cycle
+        # Update each tire with proper phase offset
+        for position in ["FL", "FR", "RL", "RR"]:
+            # Apply phase offset for each tire
+            offset = test_data["phase_offsets"][position]
+            adjusted_counter = (counter + offset * cycle_period / 100) % cycle_period
 
-        # Calculate current force for FL (Front Left)
-        fl_position = counter % cycle_period
-        if fl_position < cycle_period // 2:
-            # Increasing from 0 to max (0 to 50% of cycle)
-            ratio = fl_position / (cycle_period // 2)
-            test_data["forces"]["FL"] = ratio * max_force
-        else:
-            # Decreasing from max to 0 (50% to 100% of cycle)
-            ratio = (fl_position - cycle_period // 2) / (cycle_period // 2)
-            test_data["forces"]["FL"] = (1 - ratio) * max_force
-
-        # FR: 25% offset from FL
-        fr_position = (counter + phase_offset) % cycle_period
-        if fr_position < cycle_period // 2:
-            ratio = fr_position / (cycle_period // 2)
-            test_data["forces"]["FR"] = ratio * max_force
-        else:
-            ratio = (fr_position - cycle_period // 2) / (cycle_period // 2)
-            test_data["forces"]["FR"] = (1 - ratio) * max_force
-
-        # RL: 50% offset from FL
-        rl_position = (counter + phase_offset * 2) % cycle_period
-        if rl_position < cycle_period // 2:
-            ratio = rl_position / (cycle_period // 2)
-            test_data["forces"]["RL"] = ratio * max_force
-        else:
-            ratio = (rl_position - cycle_period // 2) / (cycle_period // 2)
-            test_data["forces"]["RL"] = (1 - ratio) * max_force
-
-        # RR: 75% offset from FL
-        rr_position = (counter + phase_offset * 3) % cycle_period
-        if rr_position < cycle_period // 2:
-            ratio = rr_position / (cycle_period // 2)
-            test_data["forces"]["RR"] = ratio * max_force
-        else:
-            ratio = (rr_position - cycle_period // 2) / (cycle_period // 2)
-            test_data["forces"]["RR"] = (1 - ratio) * max_force
-
-        # No random noise - keep the cycle pure for maximum visual clarity
+            # First half of cycle: 0 to max force (monotonically increasing)
+            if adjusted_counter < cycle_period / 2:
+                ratio = adjusted_counter / (cycle_period / 2)
+                test_data["forces"][position] = ratio * max_force
+            # Second half of cycle: max force to 0 (monotonically decreasing)
+            else:
+                ratio = (adjusted_counter - cycle_period / 2) / (cycle_period / 2)
+                test_data["forces"][position] = (1 - ratio) * max_force
 
         # Print the current forces to verify
         print(
@@ -307,7 +284,7 @@ def test_tire_force():
             + f"RR={test_data['forces']['RR']:.0f}N"
         )
 
-        # Update widgets with exact calculated forces
+        # Update widgets with calculated forces
         fl_widget.set_force(test_data["forces"]["FL"])
         fr_widget.set_force(test_data["forces"]["FR"])
         rl_widget.set_force(test_data["forces"]["RL"])

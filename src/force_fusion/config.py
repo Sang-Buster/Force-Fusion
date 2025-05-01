@@ -26,12 +26,11 @@ TIRE_FORCE_NORMAL = 2500  # N
 # Mapbox configuration
 # Replace with your actual token when using the application
 MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE"
-MAPBOX_STYLE = "mapbox://styles/mapbox/streets-v11"
-DEFAULT_CENTER = [0, 0]  # [longitude, latitude]
+DEFAULT_CENTER = [-81.04897348153887, 29.18825368942673]  # [longitude, latitude]
 DEFAULT_ZOOM = 15
 
 # Minimap configuration
-TRAJECTORY_HISTORY_LENGTH = 1000  # Maximum number of points to keep
+TRAJECTORY_HISTORY_LENGTH = 5000  # Maximum number of points to keep
 TRAJECTORY_LINE_WIDTH = 2
 
 # UI colors

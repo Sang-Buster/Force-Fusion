@@ -6,14 +6,13 @@ import math
 import os
 from threading import Lock
 
-from PyQt5.QtCore import QObject, QRectF, Qt, QUrl, pyqtSignal
+from PyQt5.QtCore import QObject, QRectF, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import QColor, QFont, QImage, QPainter, QPainterPath, QPen
 from PyQt5.QtNetwork import QNetworkAccessManager, QNetworkReply, QNetworkRequest
 from PyQt5.QtWidgets import (
     QDialog,
     QHBoxLayout,
     QLabel,
-    QPushButton,
     QSizePolicy,
     QSlider,
     QVBoxLayout,
@@ -167,60 +166,61 @@ class TileManager(QObject):
 
 class MapDetailDialog(QDialog):
     """
-    Dialog showing a detailed view of the map with zoom controls.
+    Dialog for showing a detailed map view.
+
+    Opened when the user clicks on the minimap.
     """
 
     def __init__(self, parent=None, latitude=0, longitude=0, trajectory=None):
-        super().__init__(
-            parent,
-            Qt.WindowSystemMenuHint | Qt.WindowTitleHint | Qt.WindowCloseButtonHint,
-        )
-        self.setWindowTitle("Detailed Map View")
-        self.resize(600, 500)
+        super().__init__(parent)
 
-        # Store map parameters
+        # Store parent reference for updates
+        self._parent_widget = parent
+
+        # Position data
         self.latitude = latitude
         self.longitude = longitude
-        self.trajectory = trajectory or []
-        self.zoom = 16  # Starting zoom level (higher = more detailed)
+        self.trajectory = trajectory if trajectory else []
+        self.heading = 0
 
-        # Create tile manager for loading map tiles
-        self.tile_manager = TileManager(self)
-        self.tile_manager.tileLoaded.connect(self.update)
+        # Set up dialog
+        self.setWindowTitle("Detailed Map View")
+        self.setMinimumSize(600, 500)
+        self.setModal(False)
 
-        # Create layout
-        layout = QVBoxLayout()
+        # Main layout
+        layout = QVBoxLayout(self)
 
-        # Map area
+        # Create map widget
         self.map_widget = QWidget()
-        self.map_widget.setMinimumSize(400, 300)
-        self.map_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.map_widget.setMinimumSize(580, 400)
         self.map_widget.paintEvent = self._paint_map
         layout.addWidget(self.map_widget)
 
-        # Controls layout
-        controls_layout = QHBoxLayout()
+        # Add controls below map
+        control_layout = QHBoxLayout()
 
-        # Zoom controls
-        zoom_label = QLabel("Zoom:")
-        controls_layout.addWidget(zoom_label)
-
+        # Zoom slider
         self.zoom_slider = QSlider(Qt.Horizontal)
-        self.zoom_slider.setMinimum(1)
-        self.zoom_slider.setMaximum(19)
-        self.zoom_slider.setValue(self.zoom)
-        self.zoom_slider.setTickPosition(QSlider.TicksBelow)
-        self.zoom_slider.setTickInterval(2)
+        self.zoom_slider.setMinimum(10)
+        self.zoom_slider.setMaximum(18)
+        self.zoom_slider.setValue(15)
         self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
-        controls_layout.addWidget(self.zoom_slider)
+        control_layout.addWidget(QLabel("Zoom:"))
+        control_layout.addWidget(self.zoom_slider)
 
-        # Close button
-        close_button = QPushButton("Close")
-        close_button.clicked.connect(self.close)
-        controls_layout.addWidget(close_button)
+        # Add layout to main layout
+        layout.addLayout(control_layout)
 
-        layout.addLayout(controls_layout)
-        self.setLayout(layout)
+        # Map settings
+        self.zoom = 15
+        self.tile_manager = TileManager(self)
+        self.tile_manager.tileLoaded.connect(self.update)
+
+        # Timer to periodically update the dialog
+        self._update_timer = QTimer(self)
+        self._update_timer.timeout.connect(self._update_from_parent)
+        self._update_timer.start(200)  # Update every 200ms
 
         # Center the dialog on the screen
         center_point = parent.mapToGlobal(parent.rect().center())
@@ -230,6 +230,15 @@ class MapDetailDialog(QDialog):
         """Handle zoom slider value change."""
         self.zoom = zoom
         self.update()
+
+    def _update_from_parent(self):
+        """Update position and trajectory data from parent widget."""
+        if self._parent_widget:
+            self.latitude = self._parent_widget._latitude
+            self.longitude = self._parent_widget._longitude
+            self.trajectory = self._parent_widget._trajectory.copy()
+            self.heading = self._parent_widget._heading
+            self.update()
 
     def _paint_map(self, event):
         """Paint the detailed map view."""
@@ -309,7 +318,7 @@ class MapDetailDialog(QDialog):
                 # Draw arrow
                 painter.save()
                 painter.translate(px, py)
-                painter.rotate(90 - heading)  # Adjust for screen coordinates
+                painter.rotate(heading)  # Align rotation with HeadingWidget
 
                 # Draw triangle
                 arrow_path = QPainterPath()
@@ -496,8 +505,8 @@ class MinimapWidget(QWidget):
         super().__init__(parent)
 
         # Current position
-        self._latitude = 0.0
-        self._longitude = 0.0
+        self._latitude = config.DEFAULT_CENTER[1]  # Default latitude
+        self._longitude = config.DEFAULT_CENTER[0]  # Default longitude
         self._heading = 0.0  # Heading in degrees
 
         # Trajectory history (list of lat/lon points)
@@ -559,6 +568,10 @@ class MinimapWidget(QWidget):
         # Limit number of trajectory points
         if len(self._trajectory) > self._max_points:
             self._trajectory.pop(0)
+
+        # If detail dialog is open, update it
+        if self._detail_dialog and self._detail_dialog.isVisible():
+            self._detail_dialog._update_from_parent()
 
         # Request a repaint
         self.update()
@@ -752,19 +765,6 @@ class MinimapWidget(QWidget):
 
         painter.restore()
 
-    def _geo_to_tile(self, lat, lon, zoom):
-        """Convert geographic coordinates to tile coordinates."""
-        lat_rad = math.radians(lat)
-        n = 2.0**zoom
-        tile_x = (lon + 180.0) / 360.0 * n
-        tile_y = (
-            (1.0 - math.log(math.tan(lat_rad) + 1.0 / math.cos(lat_rad)) / math.pi)
-            / 2.0
-            * n
-        )
-
-        return tile_x, tile_y
-
     def _draw_grid(self, painter, center_x, center_y, radius):
         """Draw the coordinate grid."""
         painter.setPen(QPen(QColor(100, 100, 100, 170), 0.75))
@@ -895,9 +895,10 @@ class MinimapWidget(QWidget):
         # Draw arrow using the heading
         painter.save()
         painter.translate(x, y)
-        painter.rotate(
-            90 - heading
-        )  # Adjust by 90 degrees because 0 = north in math but east in screen coords
+
+        # Use same heading logic as the CoG compass rose
+        # In CoG gauge, 0° is North, 90° is East, etc.
+        painter.rotate(heading)  # Align rotation with HeadingWidget
 
         # Draw a triangle for the direction
         path = QPainterPath()
@@ -936,3 +937,16 @@ class MinimapWidget(QWidget):
         y = self._centery - (lat - ref_lat) / self._map_scale
 
         return x, y
+
+    def _geo_to_tile(self, lat, lon, zoom):
+        """Convert geographic coordinates to tile coordinates."""
+        lat_rad = math.radians(lat)
+        n = 2.0**zoom
+        tile_x = (lon + 180.0) / 360.0 * n
+        tile_y = (
+            (1.0 - math.log(math.tan(lat_rad) + 1.0 / math.cos(lat_rad)) / math.pi)
+            / 2.0
+            * n
+        )
+
+        return tile_x, tile_y

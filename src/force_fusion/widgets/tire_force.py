@@ -37,9 +37,9 @@ class TireForceWidget(QWidget):
         self._position = position
 
         # Force visualization settings
-        self._min_force = 0.0  # Minimum force (N)
-        self._max_force = 2500.0  # Maximum force (N)
-        self._normal_force = 2500.0  # Reference for 100% force
+        self._min_force = config.TIRE_FORCE_MIN  # Minimum force (N)
+        self._max_force = config.TIRE_FORCE_MAX  # Maximum force (N)
+        self._normal_force = config.TIRE_FORCE_NORMAL  # Reference for 100% force
 
         # Set widget properties
         self.setMinimumSize(150, 150)
@@ -58,7 +58,8 @@ class TireForceWidget(QWidget):
         Args:
             force: Normal force in Newtons
         """
-        self._force = max(self._min_force, min(self._max_force, force))
+        # Allow zero force by not clamping to min_force
+        self._force = min(self._max_force, max(0, force))
         self.update()
 
     def paintEvent(self, event):

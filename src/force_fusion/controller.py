@@ -4,6 +4,8 @@ Controller class for wiring sensor signals to dashboard widgets.
 
 from PyQt5.QtCore import QObject
 
+from force_fusion import config
+
 
 class DashboardController(QObject):
     """
@@ -79,9 +81,7 @@ class DashboardController(QObject):
         if self._record_trajectory:
             self._position_history.append((latitude, longitude))
             # Limit the size of the history
-            if (
-                len(self._position_history) > 1000
-            ):  # Adjust based on desired trajectory length
+            if len(self._position_history) > config.TRAJECTORY_HISTORY_LENGTH:
                 self._position_history.pop(0)
 
     def _on_speed_changed(self, speed):

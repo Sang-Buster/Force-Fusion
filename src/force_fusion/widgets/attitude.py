@@ -1,5 +1,7 @@
 """
 Attitude widget for displaying vehicle pitch and roll.
+
+Based on aircraft attitude indicator design with blue sky and brown ground.
 """
 
 import math
@@ -22,12 +24,14 @@ CAR_BACK_PATH = os.path.join(RESOURCE_DIR, "car_back.svg")
 
 class AttitudeWidget(QWidget):
     """
-    Widget that displays an attitude indicator showing vehicle pitch and roll.
+    Widget that displays an aircraft-style attitude indicator showing vehicle pitch and roll.
 
-    Similar to an aircraft artificial horizon, this displays:
-    - Pitch (nose up/down angle)
-    - Roll (left/right tilt angle)
-    - Reference vehicle indicator
+    Features:
+    - Blue sky / brown ground representation
+    - Artificial horizon
+    - Pitch ladder markings
+    - Roll markings
+    - Vehicle reference symbol
     """
 
     def __init__(self, parent=None):
@@ -40,26 +44,28 @@ class AttitudeWidget(QWidget):
         super().__init__(parent)
 
         # Current attitude values
-        self._pitch = 15.0  # degrees (example value)
-        self._roll = -10.0  # degrees (example value)
+        self._pitch = 0.0  # degrees
+        self._roll = 0.0  # degrees
 
-        # Attitude indicator settings
-        self._pitch_scale_max = 40.0  # degrees
-        self._roll_scale_max = 40.0  # degrees
-        self._pitch_major_step = 10.0
+        # Attitude indicator settings - use config values
+        self._pitch_scale_max = config.PITCH_MAX  # degrees
+        self._roll_scale_max = config.ROLL_MAX  # degrees
+        self._pitch_step = 10.0  # Degrees between pitch marks
 
-        # Load car icons
+        # Load car icons (might use for reference symbol)
         self._car_side_pixmap = QPixmap(CAR_SIDE_PATH)
         self._car_back_pixmap = QPixmap(CAR_BACK_PATH)
 
-        # If images couldn't be loaded, create basic white car shapes
+        # If images couldn't be loaded, use basics
         if self._car_side_pixmap.isNull():
             print(f"Warning: Could not load {CAR_SIDE_PATH}. Using placeholder.")
-            self._car_side_pixmap = self._create_side_car_placeholder()
+            self._car_side_pixmap = QPixmap(10, 10)
+            self._car_side_pixmap.fill(Qt.white)
 
         if self._car_back_pixmap.isNull():
             print(f"Warning: Could not load {CAR_BACK_PATH}. Using placeholder.")
-            self._car_back_pixmap = self._create_back_car_placeholder()
+            self._car_back_pixmap = QPixmap(10, 10)
+            self._car_back_pixmap.fill(Qt.white)
 
         # Set widget properties
         self.setMinimumSize(200, 200)
@@ -71,82 +77,9 @@ class AttitudeWidget(QWidget):
         palette.setColor(self.backgroundRole(), QColor(config.BACKGROUND_COLOR))
         self.setPalette(palette)
 
-    def _create_side_car_placeholder(self):
-        """Create a simple white car side view placeholder"""
-        pixmap = QPixmap(60, 30)
-        pixmap.fill(Qt.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        # Draw a simple car side view silhouette in white
-        painter.setPen(QPen(Qt.white, 1))
-        painter.setBrush(QColor(200, 200, 200))
-
-        # Car body shape
-        path = QPainterPath()
-        path.moveTo(5, 20)
-        path.lineTo(10, 20)
-        path.lineTo(15, 12)
-        path.lineTo(30, 12)
-        path.lineTo(40, 6)
-        path.lineTo(50, 6)
-        path.lineTo(55, 12)
-        path.lineTo(55, 20)
-        path.lineTo(45, 20)
-        path.lineTo(42, 25)
-        path.lineTo(20, 25)
-        path.lineTo(17, 25)
-        path.lineTo(15, 20)
-        path.lineTo(5, 20)
-        painter.drawPath(path)
-
-        # Wheels
-        painter.setBrush(QColor(50, 50, 50))
-        painter.drawEllipse(15, 22, 8, 8)
-        painter.drawEllipse(42, 22, 8, 8)
-
-        # Windows
-        painter.setBrush(QColor(150, 150, 150))
-        painter.drawRect(18, 9, 20, 8)
-
-        painter.end()
-        return pixmap
-
-    def _create_back_car_placeholder(self):
-        """Create a simple white car back view placeholder"""
-        pixmap = QPixmap(40, 40)
-        pixmap.fill(Qt.transparent)
-
-        painter = QPainter(pixmap)
-        painter.setRenderHint(QPainter.Antialiasing)
-
-        # Draw a simple car back view silhouette in white
-        painter.setPen(QPen(Qt.white, 1))
-        painter.setBrush(QColor(200, 200, 200))
-
-        # Car body shape
-        path = QPainterPath()
-        path.moveTo(8, 25)
-        path.lineTo(32, 25)
-        path.lineTo(32, 15)
-        path.lineTo(28, 8)
-        path.lineTo(12, 8)
-        path.lineTo(8, 15)
-        path.lineTo(8, 25)
-        painter.drawPath(path)
-
-        # Wheels
-        painter.setBrush(QColor(50, 50, 50))
-        painter.drawEllipse(5, 22, 8, 8)
-        painter.drawEllipse(27, 22, 8, 8)
-
-        # Window
-        painter.setBrush(QColor(150, 150, 150))
-        painter.drawRect(12, 10, 16, 8)
-
-        painter.end()
-        return pixmap
+        # Define colors for sky and ground
+        self._sky_color = QColor(0, 180, 255)  # Sky blue
+        self._ground_color = QColor(160, 120, 50)  # Brown earth
 
     def set_pitch(self, pitch):
         """
@@ -170,7 +103,7 @@ class AttitudeWidget(QWidget):
 
     def paintEvent(self, event):
         """
-        Paint the attitude indicator based on the reference design.
+        Paint the aircraft-style attitude indicator.
 
         Args:
             event: Paint event
@@ -182,328 +115,277 @@ class AttitudeWidget(QWidget):
         # Get widget dimensions and calculate radius/center
         width = self.width()
         height = self.height()
-        diameter = min(width, height)
-        radius = diameter // 2 - 10  # Padding
         center_x = width // 2
         center_y = height // 2
 
-        # Draw static background elements
-        self._draw_gauge_background(painter, center_x, center_y, radius)
-        self._draw_degree_scales(painter, center_x, center_y, radius)
+        # Use the smaller dimension for the attitude sphere
+        diameter = min(width, height)
+        radius = (diameter // 2) - 20  # Padding from edges
 
-        # Draw dynamic elements
-        self._draw_car_indicators(painter, center_x, center_y, radius)
-        self._draw_value_indicators(painter, center_x, center_y, radius)
+        # Draw outer frame and background
+        self._draw_background(painter, center_x, center_y, radius)
+
+        # Draw the attitude sphere (sky/ground representation)
+        self._draw_attitude_sphere(painter, center_x, center_y, radius)
+
+        # Draw pitch and roll indicators
+        self._draw_pitch_ladder(painter, center_x, center_y, radius)
+        self._draw_roll_markings(painter, center_x, center_y, radius)
+
+        # Draw fixed aircraft reference symbol
+        self._draw_aircraft_symbol(painter, center_x, center_y, radius)
+
+        # Draw value displays
+        self._draw_value_displays(painter, center_x, center_y, radius)
 
         # Draw title
         painter.setPen(QColor(config.TEXT_COLOR))
         painter.setFont(QFont("Arial", 10))
         painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Attitude")
 
-    def _draw_gauge_background(self, painter, center_x, center_y, radius):
-        """Draw the circular background of the gauge."""
-        # Draw outer circle background
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.setBrush(QColor(20, 20, 20))  # Dark background
+    def _draw_background(self, painter, center_x, center_y, radius):
+        """Draw the outer bezel and background of the gauge."""
+        # Draw outer dark circle (bezel)
+        painter.setPen(QPen(QColor(60, 60, 60), 2))
+        painter.setBrush(QColor(30, 30, 30))
+        painter.drawEllipse(
+            center_x - radius - 5,
+            center_y - radius - 5,
+            (radius + 5) * 2,
+            (radius + 5) * 2,
+        )
+
+        # Draw inner black background
+        painter.setPen(QPen(QColor(50, 50, 50), 1))
+        painter.setBrush(QColor(0, 0, 0))
         painter.drawEllipse(
             center_x - radius, center_y - radius, radius * 2, radius * 2
         )
 
-        # Draw +/- markers at the ends of the line
-        marker_size = radius * 0.1
+    def _draw_attitude_sphere(self, painter, center_x, center_y, radius):
+        """Draw the sky/ground attitude sphere that rotates with roll and moves with pitch."""
+        # Save the current state to restore later
+        painter.save()
+
+        # Create clipping region (everything outside this will not be drawn)
+        clip_path = QPainterPath()
+        clip_path.addEllipse(
+            center_x - radius, center_y - radius, radius * 2, radius * 2
+        )
+        painter.setClipPath(clip_path)
+
+        # Move to center and rotate around center based on roll angle
+        painter.translate(center_x, center_y)
+        painter.rotate(
+            -self._roll
+        )  # Reverted: Negative roll rotates background CW (left side down for positive roll)
+
+        # Calculate horizon offset based on pitch
+        # Each 10 degrees of pitch = ~1/4 of the radius in distance
+        pitch_offset = (self._pitch / 10.0) * (radius / 4.0)
+
+        # Draw the ground (bottom half plus pitch offset - POSITIVE offset moves horizon DOWN for nose up)
+        ground_rect = QRectF(-radius * 1.5, 0 + pitch_offset, radius * 3, radius * 3)
+        painter.setBrush(self._ground_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawRect(ground_rect)
+
+        # Draw the sky (top half plus pitch offset - POSITIVE offset moves horizon DOWN for nose up)
+        sky_rect = QRectF(
+            -radius * 1.5, -radius * 3 + pitch_offset, radius * 3, radius * 3
+        )
+        painter.setBrush(self._sky_color)
+        painter.setPen(Qt.NoPen)
+        painter.drawRect(sky_rect)
+
+        # Draw horizon line - convert float to int
         painter.setPen(QPen(Qt.white, 2))
-
-        # Minus sign (left)
-        minus_x = center_x - radius + marker_size * 2
         painter.drawLine(
-            int(minus_x - marker_size), center_y, int(minus_x + marker_size), center_y
+            int(-radius * 1.2),
+            int(pitch_offset),  # Use positive offset
+            int(radius * 1.2),
+            int(pitch_offset),  # Use positive offset
         )
 
-        # Plus sign (right)
-        plus_x = center_x + radius - marker_size * 2
-        painter.drawLine(
-            int(plus_x - marker_size), center_y, int(plus_x + marker_size), center_y
+        painter.restore()
+
+    def _draw_pitch_ladder(self, painter, center_x, center_y, radius):
+        """Draw the pitch ladder markings that show pitch attitude."""
+        # Save the current state
+        painter.save()
+
+        # Create clipping region
+        clip_path = QPainterPath()
+        clip_path.addEllipse(
+            center_x - radius, center_y - radius, radius * 2, radius * 2
         )
-        painter.drawLine(
-            int(plus_x),
-            int(center_y - marker_size),
-            int(plus_x),
-            int(center_y + marker_size),
-        )
+        painter.setClipPath(clip_path)
 
-    def _draw_degree_scales(self, painter, center_x, center_y, radius):
-        """Draw the pitch/roll degree scales around the periphery."""
-        scale_radius = radius * 0.85  # Slightly inset from edge
+        # Move to center and rotate for roll
+        painter.translate(center_x, center_y)
+        painter.rotate(-self._roll)  # Reverted: Negative roll rotates background CW
 
-        # Draw major degree markers (every 10 degrees)
-        for i in range(5):  # 0, 10, 20, 30, 40 degrees
-            angle_value = i * 10
+        # Remove the outer pitch line arcs that might appear on edges
+        # by only drawing pitch ladder lines (-30 to +30 degrees) in a limited horizontal range
+        line_width = radius * 0.5  # Reduced from 0.6 to avoid edge arcs
 
-            # Set color based on angle value (match reference image)
-            if angle_value <= 20:
-                color = Qt.white
-            elif angle_value <= 30:
-                color = QColor(255, 165, 0)  # Orange
-            else:
-                color = Qt.red
-
-            painter.setPen(QPen(color, 1))
-            painter.setFont(
-                QFont("Arial", 8, QFont.Bold if angle_value >= 30 else QFont.Normal)
-            )
-
-            # Draw angle markings in all four quadrants
-            for quadrant in range(4):
-                # Calculate position based on quadrant
-                if quadrant == 0:  # Top-right
-                    angle_rad = math.radians(90 - angle_value)
-                elif quadrant == 1:  # Top-left
-                    angle_rad = math.radians(90 + angle_value)
-                elif quadrant == 2:  # Bottom-left
-                    angle_rad = math.radians(270 - angle_value)
-                else:  # Bottom-right
-                    angle_rad = math.radians(270 + angle_value)
-
-                x = center_x + scale_radius * math.cos(angle_rad)
-                y = center_y - scale_radius * math.sin(angle_rad)
-
-                # Skip 0 degree marks (on horizontal line)
-                if angle_value == 0:
-                    continue
-
-                # Draw the tick mark
-                tick_length = 8 if angle_value % 20 == 0 else 5
-                inner_x = center_x + (scale_radius - tick_length) * math.cos(angle_rad)
-                inner_y = center_y - (scale_radius - tick_length) * math.sin(angle_rad)
-                painter.drawLine(int(inner_x), int(inner_y), int(x), int(y))
-
-                # Draw the text
-                text_radius = scale_radius - 20
-                text_x = center_x + text_radius * math.cos(angle_rad)
-                text_y = center_y - text_radius * math.sin(angle_rad)
-
-                text_rect = QRectF(text_x - 15, text_y - 15, 30, 30)
-                painter.drawText(text_rect, Qt.AlignCenter, str(angle_value))
-
-        # Draw smaller tick marks every 5 degrees between major markers
-        painter.setPen(QPen(Qt.white, 0.5))
-        for i in range(1, 8):  # 5, 15, 25, 35 degrees
-            angle_value = i * 5
-
-            # Skip values that are already drawn with major ticks
-            if angle_value % 10 == 0:
+        # Draw pitch ladder lines (up to +/- 30 degrees)
+        for pitch in range(-30, 31, 10):
+            # Skip horizon (0 degrees) as it's already drawn
+            if pitch == 0:
                 continue
 
-            # Draw smaller ticks in all four quadrants
-            for quadrant in range(4):
-                # Calculate position based on quadrant
-                if quadrant == 0:  # Top-right
-                    angle_rad = math.radians(90 - angle_value)
-                elif quadrant == 1:  # Top-left
-                    angle_rad = math.radians(90 + angle_value)
-                elif quadrant == 2:  # Bottom-left
-                    angle_rad = math.radians(270 - angle_value)
-                else:  # Bottom-right
-                    angle_rad = math.radians(270 + angle_value)
+            # Calculate vertical position for this pitch angle
+            # Positive pitch moves lines DOWN
+            y_pos = (pitch / 10.0) * (radius / 4.0)
 
-                x = center_x + scale_radius * math.cos(angle_rad)
-                y = center_y - scale_radius * math.sin(angle_rad)
+            # Different appearance for positive vs negative pitch
+            if (
+                pitch > 0
+            ):  # Above horizon (lines appear below center when pitch is positive/nose up)
+                # Draw line with gap in the middle - convert float to int
+                painter.setPen(QPen(Qt.white, 1))
+                painter.drawLine(
+                    int(-line_width / 2), int(y_pos), int(-line_width / 8), int(y_pos)
+                )
+                painter.drawLine(
+                    int(line_width / 8), int(y_pos), int(line_width / 2), int(y_pos)
+                )
 
-                # Draw smaller tick mark (shorter than minor ticks)
-                tick_length = 3
-                inner_x = center_x + (scale_radius - tick_length) * math.cos(angle_rad)
-                inner_y = center_y - (scale_radius - tick_length) * math.sin(angle_rad)
-                painter.drawLine(int(inner_x), int(inner_y), int(x), int(y))
+                # Draw short tickmarks on ends - convert float to int
+                painter.drawLine(
+                    int(-line_width / 2),
+                    int(y_pos),
+                    int(-line_width / 2),
+                    int(y_pos - 3),
+                )
+                painter.drawLine(
+                    int(line_width / 2), int(y_pos), int(line_width / 2), int(y_pos - 3)
+                )
+            else:  # Below horizon
+                # Draw solid line - convert float to int
+                painter.setPen(QPen(Qt.white, 1))
+                painter.drawLine(
+                    int(-line_width / 2), int(y_pos), int(line_width / 2), int(y_pos)
+                )
 
-    def _draw_car_indicators(self, painter, center_x, center_y, radius):
-        """Draw the car indicators for pitch and roll."""
-        car_size = radius * 0.25  # Size of car icons
+                # Draw short tickmarks on ends pointing down - convert float to int
+                painter.drawLine(
+                    int(-line_width / 2),
+                    int(y_pos),
+                    int(-line_width / 2),
+                    int(y_pos + 3),
+                )
+                painter.drawLine(
+                    int(line_width / 2), int(y_pos), int(line_width / 2), int(y_pos + 3)
+                )
 
-        # Draw pitch indicator (side view car)
-        painter.save()
-        side_car_y = center_y + radius * 0.3  # Position below center
+            # Draw pitch angle labels
+            text = str(abs(pitch))
+            painter.setFont(QFont("Arial", 7))
+            text_width = painter.fontMetrics().horizontalAdvance(text)
 
-        # Apply pitch rotation to side car
-        painter.translate(center_x, side_car_y)
-        pitch_angle = self._pitch * 0.8
-        painter.rotate(
-            -pitch_angle
-        )  # Negative to match convention (nose up = positive pitch -> counter-clockwise rotation)
+            # Draw left number
+            painter.drawText(
+                int(-line_width / 2 - text_width - 5), int(y_pos + 4), text
+            )
 
-        # Scale and draw the side view car
-        scaled_side_car = self._car_side_pixmap.scaled(
-            int(car_size * 2.3),
-            int(car_size),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
-        )
-        painter.drawPixmap(
-            int(-scaled_side_car.width() / 2),
-            int(-scaled_side_car.height() / 2),
-            scaled_side_car,
-        )
-
-        # Draw dynamic pitch horizon line relative to the side car
-        painter.setPen(QPen(Qt.white, 1))
-        horizon_width = radius * 0.5
-        # Line stays horizontal in the car's rotated frame
-        horizon_y_offset = 0  # Centered on the car's pivot point for simplicity
-        painter.drawLine(
-            int(-horizon_width / 2),
-            int(horizon_y_offset),
-            int(horizon_width / 2),
-            int(horizon_y_offset),
-        )
+            # Draw right number
+            painter.drawText(int(line_width / 2 + 5), int(y_pos + 4), text)
 
         painter.restore()
 
-        # Draw pitch value (outside the rotated context)
-        painter.setPen(Qt.white)
+    def _draw_roll_markings(self, painter, center_x, center_y, radius):
+        """Draw roll degree markings at the top of the gauge."""
+        # Draw roll markings at the top of the attitude indicator
+        painter.save()
+
+        # Draw roll arc at the top (very subtle - just the markers)
+        painter.setPen(QPen(Qt.white, 1))
+        arc_radius = radius * 0.85
+
+        # Draw roll tick marks
+        tick_angles = [0, 10, 20, 30, -10, -20, -30]
+        for angle in tick_angles:
+            # Convert angle to radians (0 is at the top, positive is clockwise)
+            angle_rad = math.radians(90 - angle)
+
+            # Calculate tick mark start and end positions
+            start_x = center_x + arc_radius * math.cos(angle_rad)
+            start_y = center_y - arc_radius * math.sin(angle_rad)
+
+            # Longer ticks for major angles
+            tick_length = 7 if angle in [0, 30, -30] else 5
+            end_x = center_x + (arc_radius - tick_length) * math.cos(angle_rad)
+            end_y = center_y - (arc_radius - tick_length) * math.sin(angle_rad)
+
+            painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
+
+            # Add roll angle labels for 30 degree marks
+            if angle in [30, -30]:
+                text = str(abs(angle))
+                # Position text slightly beyond the tick marks
+                text_x = center_x + (arc_radius - tick_length - 12) * math.cos(
+                    angle_rad
+                )
+                text_y = center_y - (arc_radius - tick_length - 12) * math.sin(
+                    angle_rad
+                )
+
+                # Center the text around the calculated point
+                text_rect = QRectF(int(text_x - 10), int(text_y - 10), 20, 20)
+                painter.drawText(text_rect, Qt.AlignCenter, text)
+
+        # Draw roll indicator (small triangle pointing to current roll)
+        if hasattr(self, "_roll") and self._roll is not None:
+            roll_rad = math.radians(90 - self._roll)
+            roll_x = center_x + arc_radius * math.cos(roll_rad)
+            roll_y = center_y - arc_radius * math.sin(roll_rad)
+
+            # Create triangle pointing to roll markings
+            triangle = QPolygonF()
+            triangle.append(QPointF(roll_x, roll_y))
+            triangle.append(QPointF(roll_x - 4, roll_y - 10))  # More pointy triangle
+            triangle.append(QPointF(roll_x + 4, roll_y - 10))
+
+            painter.setBrush(QColor(255, 255, 0))  # Yellow triangle
+            painter.setPen(Qt.black)
+            painter.drawPolygon(triangle)
+
+        painter.restore()
+
+    def _draw_aircraft_symbol(self, painter, center_x, center_y, radius):
+        """Draw fixed aircraft reference symbol in the center."""
+        # Draw the fixed aircraft reference symbol
+        painter.setPen(QPen(Qt.white, 2))
+
+        # Draw miniature wings and center dot
+        wing_width = radius * 0.3
+
+        # Left wing with angle indicators
+        painter.drawLine(
+            int(center_x - 3), int(center_y), int(center_x - wing_width), int(center_y)
+        )
+
+        # Right wing with angle indicators
+        painter.drawLine(
+            int(center_x + 3), int(center_y), int(center_x + wing_width), int(center_y)
+        )
+
+        # Center dot/circle
+        painter.setBrush(Qt.white)
+        painter.drawEllipse(center_x - 2, center_y - 2, 4, 4)
+
+    def _draw_value_displays(self, painter, center_x, center_y, radius):
+        """Draw the numeric pitch and roll values."""
+        # Draw pitch value at bottom
+        painter.setPen(QColor(config.TEXT_COLOR))
         painter.setFont(QFont("Arial", 14, QFont.Bold))
-        # Format pitch value with 2 decimal places instead of integer
         pitch_text = f"{self._pitch:.2f}"
-        text_rect = QRectF(center_x - 40, side_car_y + car_size * 0.7, 80, 30)
-        painter.drawText(text_rect, Qt.AlignCenter, pitch_text)
+        pitch_rect = QRectF(center_x - 50, center_y + radius * 0.5, 100, 30)
+        painter.drawText(pitch_rect, Qt.AlignCenter, pitch_text)
 
-        # Draw roll indicator (back view car)
-        painter.save()
-        roll_car_y = center_y - radius * 0.3  # Position above center
-
-        # Apply rotation for roll
-        painter.translate(center_x, roll_car_y)
-        painter.rotate(-self._roll)  # Negative because positive roll is clockwise
-
-        # Scale and draw the back view car
-        scaled_back_car = self._car_back_pixmap.scaled(
-            int(car_size * 1),
-            int(car_size * 1),
-            Qt.KeepAspectRatio,
-            Qt.SmoothTransformation,
-        )
-        painter.drawPixmap(
-            int(-scaled_back_car.width() / 2),
-            int(-scaled_back_car.height() / 2),
-            scaled_back_car,
-        )
-
-        # Draw dynamic roll horizon line relative to the back car
-        painter.setPen(QPen(Qt.white, 1))
-        roll_horizon_width = radius * 0.4  # Slightly smaller than pitch horizon
-        # Line stays horizontal in the car's rotated frame
-        roll_horizon_y_offset = 0  # Centered for simplicity
-        painter.drawLine(
-            int(-roll_horizon_width / 2),
-            int(roll_horizon_y_offset),
-            int(roll_horizon_width / 2),
-            int(roll_horizon_y_offset),
-        )
-
-        painter.restore()
-
-        # Draw roll value
-        painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 14, QFont.Bold))
-        # Format roll value with 2 decimal places instead of integer
-        # Note: using -self._roll to match reference image convention
-        roll_text = f"{-self._roll:.2f}"
-        text_rect = QRectF(center_x - 40, roll_car_y - car_size * 0.7 - 30, 80, 30)
-        painter.drawText(text_rect, Qt.AlignCenter, roll_text)
-
-    def _draw_value_indicators(self, painter, center_x, center_y, radius):
-        """Draw the triangular indicators showing current pitch and roll values."""
-        scale_radius = radius * 0.85
-        triangle_size = radius * 0.04
-
-        # Calculate positions for triangles based on current values
-        # For pitch (orange triangle on bottom arc)
-        pitch_ratio = self._pitch / self._pitch_scale_max
-        pitch_ratio = max(-1.0, min(1.0, pitch_ratio))
-
-        # For roll (blue triangle on top arc)
-        roll_ratio = self._roll / self._roll_scale_max
-        roll_ratio = max(-1.0, min(1.0, roll_ratio))
-
-        # Draw roll indicator triangle on the top arc (cyan/blue)
-        top_roll_angle_deg = (
-            90 - roll_ratio * 70
-        )  # Map ratio to degrees on top arc (range 20 to 160)
-        top_roll_angle_rad = math.radians(top_roll_angle_deg)
-        top_roll_x = center_x + scale_radius * math.cos(top_roll_angle_rad)
-        top_roll_y = center_y - scale_radius * math.sin(top_roll_angle_rad)
-
-        # Calculate radial angle from center to the roll indicator
-        roll_radial_angle = math.degrees(
-            math.atan2(top_roll_y - center_y, top_roll_x - center_x)
-        )
-
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 255, 255))  # Cyan (blue)
-        # Rotate triangle to point downward toward center/degree marks
-        self._draw_triangle_indicator(
-            painter,
-            int(top_roll_x),
-            int(top_roll_y),
-            roll_radial_angle - 180,
-            triangle_size,
-            True,
-        )
-
-        # Draw pitch indicator triangle on the bottom arc (orange/yellow)
-        bottom_pitch_angle_deg = (
-            270 + pitch_ratio * 70
-        )  # Map ratio to degrees on bottom arc (range 200 to 340)
-        bottom_pitch_angle_rad = math.radians(bottom_pitch_angle_deg)
-        bottom_pitch_x = center_x + scale_radius * math.cos(bottom_pitch_angle_rad)
-        bottom_pitch_y = center_y - scale_radius * math.sin(bottom_pitch_angle_rad)
-
-        # Calculate radial angle from center to the pitch indicator
-        pitch_radial_angle = math.degrees(
-            math.atan2(bottom_pitch_y - center_y, bottom_pitch_x - center_x)
-        )
-
-        painter.setBrush(QColor(255, 165, 0))  # Orange (yellow)
-        # Rotate triangle to point upward away from center/degree marks
-        self._draw_triangle_indicator(
-            painter,
-            int(bottom_pitch_x),
-            int(bottom_pitch_y),
-            pitch_radial_angle + 180,
-            triangle_size,
-            True,
-        )
-
-    def _draw_triangle_indicator(self, painter, x, y, angle_deg, size, pointy=False):
-        """Draw a triangular indicator at the given position.
-
-        Args:
-            painter: QPainter object
-            x, y: Coordinates of the triangle center
-            angle_deg: Angle to rotate the triangle (in degrees)
-            size: Size of the triangle
-            pointy: Whether to make the triangle more pointy
-        """
-        painter.save()
-        painter.translate(x, y)
-        # Rotate to the specified angle
-        painter.rotate(angle_deg + 90)
-
-        if pointy:
-            # Define a more pointy triangle
-            triangle = QPolygonF(
-                [
-                    QPointF(0, -size * 1.5),  # Tip point (extended 50% for pointiness)
-                    QPointF(-size, size),  # Base corner 1
-                    QPointF(size, size),  # Base corner 2
-                ]
-            )
-        else:
-            triangle = QPolygonF(
-                [
-                    QPointF(0, -size),  # Tip
-                    QPointF(-size, size),  # Base corner 1
-                    QPointF(size, size),  # Base corner 2
-                ]
-            )
-
-        painter.drawPolygon(triangle)
-        painter.restore()
+        # Draw roll value at top
+        roll_text = f"{self._roll:.2f}"
+        roll_rect = QRectF(center_x - 50, center_y - radius * 0.5 - 30, 100, 30)
+        painter.drawText(roll_rect, Qt.AlignCenter, roll_text)
