@@ -51,6 +51,21 @@
             color: #333;
             text-align: center;
         }
+        
+        /* Add consistent styling for info container */
+        #info-container {
+            position: absolute;
+            top: 80px;
+            left: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            /* Remove min-width to allow it to match other elements */
+        }
     </style>
 </head>
 
@@ -61,10 +76,10 @@
     <div id="map"></div>
 
     <!-- Add info container for GPS and time displays below the style menu -->
-    <div id="info-container" style="position:absolute; top:80px; left:10px; background:rgba(0,0,0,0.7); color:white; padding:10px; border-radius:5px; z-index:1000; font-family:Arial,sans-serif; min-width:250px;">
+    <div id="info-container">
         <div id="gps-coordinates">GPS: Waiting for data...</div>
-        <div id="current-time">Current Time: 00h:00min:00sec</div>
-        <div id="elapsed-time">Time Elapsed: 00h:00min:00sec</div>
+        <div id="current-time">Current Time: 00:00:00</div>
+        <div id="elapsed-time">Time Elapsed: 00:00:00</div>
     </div>
 
     <script>
@@ -73,6 +88,20 @@
         var origin = [-81.049, 29.189, 50];
         var mapInitialized = false;
         var map = null;
+
+        // Function to match info container width with connection status
+        function matchInfoContainerWidth() {
+            // Get the style menu element width as reference
+            const styleMenu = document.getElementById('style-menu');
+            const infoContainer = document.getElementById('info-container');
+            
+            if (styleMenu && infoContainer) {
+                const styleMenuWidth = styleMenu.offsetWidth;
+                infoContainer.style.width = styleMenuWidth + 'px';
+                // Adjust padding to match visual appearance
+                infoContainer.style.boxSizing = 'border-box';
+            }
+        }
 
         // Advanced WebGL initialization - helps with Qt WebEngine
         const initializeWebGL = function() {
@@ -614,7 +643,7 @@
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
             const seconds = String(now.getSeconds()).padStart(2, '0');
-            document.getElementById('current-time').textContent = `Current Time: ${hours}h:${minutes}min:${seconds}sec`;
+            document.getElementById('current-time').textContent = `Current Time: ${hours}:${minutes}:${seconds}`;
             
             // Elapsed time
             const elapsed = Math.floor((now - startTime) / 1000);
@@ -622,7 +651,7 @@
             const elapsedMinutes = Math.floor((elapsed % 3600) / 60);
             const elapsedSeconds = elapsed % 60;
             document.getElementById('elapsed-time').textContent = 
-                `Time Elapsed: ${String(elapsedHours).padStart(2, '0')}h:${String(elapsedMinutes).padStart(2, '0')}min:${String(elapsedSeconds).padStart(2, '0')}sec`;
+                `Time Elapsed: ${String(elapsedHours).padStart(2, '0')}:${String(elapsedMinutes).padStart(2, '0')}:${String(elapsedSeconds).padStart(2, '0')}`;
         }
         
         // Update time every second
@@ -633,6 +662,12 @@
         window.addEventListener('load', function() {
             console.log('[DEBUG] Page loaded, creating WebSocket connection');
             
+            // Match widths of UI elements
+            matchInfoContainerWidth();
+            
+            // Re-match widths if window size changes
+            window.addEventListener('resize', matchInfoContainerWidth);
+            
             // Check for message timeouts
             setInterval(() => {
                 const now = Date.now();
@@ -642,6 +677,9 @@
                         console.log(`[DEBUG] No WebSocket messages for ${timeSinceLastMessage/1000}s`);
                         document.getElementById('connection-status').textContent = 'WebSocket: No Data';
                         document.getElementById('connection-status').style.backgroundColor = '#E5C07B';
+                        
+                        // Make sure widths match after status changes
+                        matchInfoContainerWidth();
                     }
                 }
             }, 1000);
@@ -652,5 +690,4 @@
     </script>
 </body>
 
-</html>
 </html>

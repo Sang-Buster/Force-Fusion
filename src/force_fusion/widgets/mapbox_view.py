@@ -10,11 +10,16 @@ import os
 import random
 from threading import Thread
 
-# Set critical environment variables before importing Qt
+# Set critical environment variables before importing Qt for WebGL support
 os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
-    "--enable-webgl --ignore-gpu-blocklist --enable-gpu-rasterization --enable-native-gpu-memory-buffers --enable-zero-copy"
+    "--enable-webgl --ignore-gpu-blocklist --enable-gpu-rasterization "
+    "--enable-native-gpu-memory-buffers --enable-zero-copy --no-sandbox"
 )
 os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"
+# Force OpenGL acceleration
+os.environ["QT_OPENGL"] = "desktop"
+# Debugging info
+os.environ["QT_OPENGL_DEBUG"] = "1"
 
 import websockets
 from PyQt5.QtCore import QCoreApplication, Qt, QUrl
@@ -57,6 +62,8 @@ def set_webengine_args():
         "--enable-features=VaapiVideoDecoder",
         "--disable-features=UseOzonePlatform",
         "--disable-gpu-driver-bug-workarounds",
+        "--no-sandbox",
+        "--enable-webgl",
     ]
 
     # Check if we're running within an existing QApplication
@@ -67,9 +74,6 @@ def set_webengine_args():
         os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = " ".join(args)
         # Additional environment variables to enable WebGL
         os.environ["QTWEBENGINE_DISABLE_SANDBOX"] = "1"  # Disable sandbox for testing
-        os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = (
-            "--enable-webgl --ignore-gpu-blocklist"
-        )
         print("Set WebEngine args via environment variable")
 
     # Print WebGL support information
@@ -294,6 +298,18 @@ class MapboxView(QWidget):
         settings.setAttribute(QWebEngineSettings.JavascriptEnabled, True)
         settings.setAttribute(QWebEngineSettings.LocalStorageEnabled, True)
         settings.setAttribute(QWebEngineSettings.AllowRunningInsecureContent, True)
+        settings.setAttribute(QWebEngineSettings.SpatialNavigationEnabled, True)
+
+        # Enhanced WebGL support
+        try:
+            settings.setAttribute(QWebEngineSettings.WebGLEnabled, True)
+            settings.setAttribute(
+                QWebEngineSettings.AcceleratedCompositingEnabled, True
+            )
+            settings.setAttribute(QWebEngineSettings.XSSAuditingEnabled, False)
+        except AttributeError:
+            # Some attributes might not be available in all PyQt versions
+            pass
 
         # Try to set additional settings that might not be available in all PyQt versions
         for attr_name, attr_value in [
@@ -325,16 +341,20 @@ class MapboxView(QWidget):
                 with open(html_path, "w") as f:
                     f.write(html_content)
 
-            # Convert file path to URL
-            file_url = QUrl.fromLocalFile(os.path.abspath(html_path))
+            # Get absolute path and convert to proper URL
+            absolute_path = os.path.abspath(html_path)
+            file_url = QUrl.fromLocalFile(absolute_path)
 
             # Set up JavaScript error handler
             self._web_view.page().javaScriptConsoleMessage = self._handle_js_console
 
-            # Load the HTML file directly
+            # Load the HTML file directly using the file URL
             self._web_view.load(file_url)
 
-            print(f"Loading map content directly from file: {html_path}")
+            print(f"Loading map content directly from file: {absolute_path}")
+
+            # Register callback to check WebGL initialization after page load
+            self._web_view.loadFinished.connect(self._check_webgl_initialization)
 
             # Add to layout
             self._layout.addWidget(self._web_view)
@@ -362,6 +382,14 @@ class MapboxView(QWidget):
                         return "MapboxGL failed to initialize";
                     }
                     
+                    // Return WebGL information for debugging
+                    var debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (debugInfo) {
+                        return "WebGL OK: " + 
+                            gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL) + " - " + 
+                            gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                    }
+                    
                     // All good
                     return "";
                 } catch (e) {
@@ -375,19 +403,22 @@ class MapboxView(QWidget):
     def _handle_webgl_check_result(self, result):
         """Handle the result of WebGL initialization check."""
         if result:
-            print(f"WebGL initialization failed: {result}")
+            if result.startswith("WebGL OK"):
+                print(f"WebGL initialization successful: {result}")
+            else:
+                print(f"WebGL initialization failed: {result}")
 
-            # Remove the web view
-            if hasattr(self, "_web_view"):
-                self._web_view.setVisible(False)
-                self._layout.removeWidget(self._web_view)
-                self._web_view.deleteLater()
-                self._web_view = None
+                # Remove the web view
+                if hasattr(self, "_web_view"):
+                    self._web_view.setVisible(False)
+                    self._layout.removeWidget(self._web_view)
+                    self._web_view.deleteLater()
+                    self._web_view = None
 
-            # Show error message
-            self._setup_placeholder(
-                f"3D Map Error\n\nWebGL initialization failed: {result}\n\nPlease ensure your system supports hardware-accelerated graphics."
-            )
+                # Show error message
+                self._setup_placeholder(
+                    f"3D Map Error\n\nWebGL initialization failed: {result}\n\nPlease ensure your system supports hardware-accelerated graphics."
+                )
 
     def _handle_js_console(self, level, message, line, source):
         """Handle JavaScript console messages."""
