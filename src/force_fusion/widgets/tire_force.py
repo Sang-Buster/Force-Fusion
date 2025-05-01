@@ -59,7 +59,7 @@ class TireForceWidget(QWidget):
             force: Normal force in Newtons
         """
         # Allow zero force by not clamping to min_force
-        self._force = min(self._max_force, max(0, force))
+        self._force = min(self._max_force, max(config.TIRE_FORCE_MIN, force))
         self.update()
 
     def paintEvent(self, event):
@@ -127,34 +127,42 @@ class TireForceWidget(QWidget):
         # Calculate force percentage from 0 to 100%
         force_percent = (self._force / self._max_force) * 100
 
-        # Determine color based on force level
-        # 0-25%: Green
-        # 25-50%: Green to Yellow-Green
-        # 50-75%: Yellow-Green to Yellow
-        # 75-100%: Yellow to Red
+        # Determine color based on force level using config colors
+        # Low force (0-33%): Green (TIRE_FORCE_COLOR_LOW)
+        # Normal force (33-66%): Yellow (TIRE_FORCE_COLOR_NORMAL)
+        # High force (66-100%): Red (TIRE_FORCE_COLOR_HIGH)
 
-        if force_percent <= 25:
-            # Green (0-25%)
-            r = int(40 + (force_percent / 25) * 170)  # 40 to 210
-            g = int(220)  # Bright green stays constant
-            b = int(40)  # Low blue component
-        elif force_percent <= 50:
-            # Green to Yellow-Green (25-50%)
-            r = int(210 + (force_percent - 25) / 25 * 30)  # 210 to 240
-            g = int(220)  # Bright green stays constant
-            b = int(40 - (force_percent - 25) / 25 * 20)  # 40 to 20
-        elif force_percent <= 75:
-            # Yellow-Green to Yellow (50-75%)
-            r = int(240 + (force_percent - 50) / 25 * 15)  # 240 to 255
-            g = int(220 - (force_percent - 50) / 25 * 40)  # 220 to 180
-            b = int(20 - (force_percent - 50) / 25 * 10)  # 20 to 10
+        # Convert hex color values to QColor
+        low_color = QColor(config.TIRE_FORCE_COLOR_LOW)
+        normal_color = QColor(config.TIRE_FORCE_COLOR_NORMAL)
+        high_color = QColor(config.TIRE_FORCE_COLOR_HIGH)
+
+        if force_percent <= 33:
+            # Low force: interpolate from dark green to full green
+            color = low_color
+            factor = (force_percent / 33) * 30 + 100  # 100% to 130%
+            color = color.lighter(int(factor))
+        elif force_percent <= 66:
+            # Normal force: interpolate from green to yellow
+            t = (force_percent - 33) / 33  # 0 to 1 within this range
+            color = QColor(
+                int(low_color.red() + t * (normal_color.red() - low_color.red())),
+                int(low_color.green() + t * (normal_color.green() - low_color.green())),
+                int(low_color.blue() + t * (normal_color.blue() - low_color.blue())),
+            )
         else:
-            # Yellow to Red (75-100%)
-            r = 255  # Red stays at maximum
-            g = int(180 - (force_percent - 75) / 25 * 180)  # 180 to 0
-            b = int(10 - (force_percent - 75) / 25 * 10)  # 10 to 0
-
-        color = QColor(r, g, b)
+            # High force: interpolate from yellow to red
+            t = (force_percent - 66) / 34  # 0 to 1 within this range
+            color = QColor(
+                int(normal_color.red() + t * (high_color.red() - normal_color.red())),
+                int(
+                    normal_color.green()
+                    + t * (high_color.green() - normal_color.green())
+                ),
+                int(
+                    normal_color.blue() + t * (high_color.blue() - normal_color.blue())
+                ),
+            )
 
         # Create radial gradient with dynamic colors
         gradient = QRadialGradient(center_x, center_y, radius)
@@ -178,7 +186,7 @@ class TireForceWidget(QWidget):
         painter.setFont(position_font)
 
         # Draw centered position text
-        painter.setPen(Qt.white)
+        painter.setPen(QColor(config.TEXT_COLOR))
         text_rect = QRectF(center_x - 40, center_y - 20, 80, 40)
         painter.drawText(text_rect, Qt.AlignCenter, self._position)
 

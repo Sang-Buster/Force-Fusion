@@ -48,8 +48,8 @@ class SensorProvider(QObject):
         self.data_source = data_source
 
         # Initialize simulated sensor values
-        self._latitude = 37.7749  # San Francisco
-        self._longitude = -122.4194
+        self._latitude = config.DEFAULT_CENTER[1]  # Default latitude
+        self._longitude = config.DEFAULT_CENTER[0]  # Default longitude
         self._speed = 0.0  # km/h
         self._acceleration = 0.0  # m/s²
         self._pitch = 0.0  # degrees
@@ -96,16 +96,14 @@ class SensorProvider(QObject):
 
     def start(self):
         """Start all sensor update timers."""
-        from force_fusion import config
-
         # Start timers with configured intervals
-        self._position_timer.start(
-            100
-        )  # Update position more frequently (was config.GPS_UPDATE_INTERVAL which is 1000ms)
+        self._position_timer.start(config.GPS_UPDATE_INTERVAL)
         self._speed_timer.start(config.SPEED_UPDATE_INTERVAL)
         self._attitude_timer.start(config.ATTITUDE_UPDATE_INTERVAL)
         self._tire_force_timer.start(config.TIRE_FORCE_UPDATE_INTERVAL)
-        self._time_timer.start(100)  # Update time display every 100ms
+        self._time_timer.start(
+            config.SPEED_UPDATE_INTERVAL
+        )  # Update time display every 100ms
 
         # Initial update to populate values
         self._update_position()
@@ -172,11 +170,15 @@ class SensorProvider(QObject):
             if cycle_position < cycle_period / 2:
                 ratio = cycle_position / (cycle_period / 2)
                 self._speed = ratio * config.SPEED_MAX
-                self._acceleration = 2.0  # Positive acceleration when speed increasing
+                self._acceleration = (
+                    config.ACCEL_MAX
+                )  # Use full positive acceleration range
             else:
                 ratio = (cycle_position - cycle_period / 2) / (cycle_period / 2)
                 self._speed = (1 - ratio) * config.SPEED_MAX
-                self._acceleration = -2.0  # Negative acceleration when speed decreasing
+                self._acceleration = (
+                    config.ACCEL_MIN
+                )  # Use full negative acceleration range
 
         # Emit the signals
         self.speed_changed.emit(self._speed)
@@ -224,12 +226,13 @@ class SensorProvider(QObject):
             heading_cycle = self._heading_animation_cycle
             heading_position = counter % heading_cycle
 
+            heading_range = 360  # Full circle rotation
             if heading_position < heading_cycle / 2:
                 ratio = heading_position / (heading_cycle / 2)
-                self._heading = ratio * 360
+                self._heading = ratio * heading_range
             else:
                 ratio = (heading_position - heading_cycle / 2) / (heading_cycle / 2)
-                self._heading = (1 - ratio) * 360
+                self._heading = (1 - ratio) * heading_range
 
         # Emit the signals
         self.pitch_changed.emit(self._pitch)
@@ -258,11 +261,15 @@ class SensorProvider(QObject):
                 # First half of cycle: 0 to max force (monotonically increasing)
                 if adjusted_counter < cycle_period / 2:
                     ratio = adjusted_counter / (cycle_period / 2)
-                    self._tire_forces[position] = ratio * max_force
+                    self._tire_forces[position] = config.TIRE_FORCE_MIN + ratio * (
+                        max_force - config.TIRE_FORCE_MIN
+                    )
                 # Second half of cycle: max force to 0 (monotonically decreasing)
                 else:
                     ratio = (adjusted_counter - cycle_period / 2) / (cycle_period / 2)
-                    self._tire_forces[position] = (1 - ratio) * max_force
+                    self._tire_forces[position] = max_force - ratio * (
+                        max_force - config.TIRE_FORCE_MIN
+                    )
 
         # Emit the signal
         self.tire_forces_changed.emit(self._tire_forces.copy())

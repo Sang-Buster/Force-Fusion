@@ -31,7 +31,7 @@ class SpeedometerWidget(QWidget):
         super().__init__(parent)
 
         # Current values
-        self._speed = 0.0  # km/h
+        self._speed = 0.0  # mi/h (changed from km/h)
         self._acceleration = 0.0  # m/s²
 
         # Cached calculated values
@@ -58,9 +58,11 @@ class SpeedometerWidget(QWidget):
         Update the speed value.
 
         Args:
-            speed: Speed in km/h
+            speed: Speed in km/h from sensor
         """
-        self._speed = max(self._min_speed, min(self._max_speed, speed))
+        # Convert km/h to mi/h for internal use
+        mph_speed = speed * 0.621371
+        self._speed = max(self._min_speed, min(self._max_speed, mph_speed))
         self._recalculate()
         self.update()
 
@@ -76,14 +78,14 @@ class SpeedometerWidget(QWidget):
 
     def _recalculate(self):
         """Recalculate derived values like angles."""
-        # Calculate angle based on speed in mi/h instead of km/h
+        # Calculate angle based on speed in mi/h
         speed_range = self._max_speed - self._min_speed
         angle_range = self._max_angle - self._min_angle
 
         if speed_range <= 0:
             self._speed_angle = self._min_angle
         else:
-            # Use the km/h value directly for the angle calculation since our scale is in km/h
+            # Use the mi/h value directly for the angle calculation
             normalized_speed = (self._speed - self._min_speed) / speed_range
             self._speed_angle = self._min_angle + normalized_speed * angle_range
 
@@ -154,22 +156,17 @@ class SpeedometerWidget(QWidget):
 
         # Set up pens
         major_tick_pen = QPen(QColor(200, 200, 200), 2)
-        minor_tick_pen = QPen(QColor(150, 150, 150), 1)
         micro_tick_pen = QPen(QColor(100, 100, 100), 0.5)  # For the smallest ticks
         label_pen = QPen(QColor(config.TEXT_COLOR), 1)
 
         # Calculate angles and values
         angle_range = self._max_angle - self._min_angle
-        speed_range_kmh = self._max_speed - self._min_speed
+        speed_range = self._max_speed - self._min_speed
 
-        # Convert to miles for gauge labels
-        speed_max_mph = self._max_speed * 0.621371
-
-        # Define tick steps in mph - modified as requested
+        # Define tick steps in mph - modified as requested to show every 5 mph
         major_step_mph = (
-            10  # Show major ticks (with labels) every 10 mph (changed from 20)
+            5  # Show major ticks (with labels) every 5 mph (changed from 10)
         )
-        medium_step_mph = 5  # Show medium ticks every 5 mph (taller lines)
         minor_step_mph = 1  # Show minor ticks every 1 mph
 
         # Draw arc
@@ -205,29 +202,22 @@ class SpeedometerWidget(QWidget):
             painter.setPen(QPen(color, 3))
             painter.drawArc(arc_rect, segment_start, segment_span)
 
-        # Draw ticks and labels in mph
-        for speed_mph in range(0, int(speed_max_mph) + 1, minor_step_mph):
-            # Convert mph to kmh for angle calculation
-            speed_kmh = speed_mph / 0.621371
-
+        # Draw ticks and labels in mph directly
+        for speed_mph in range(0, int(self._max_speed) + 1, minor_step_mph):
             # Calculate angle for this speed
             angle = (
                 self._min_angle
-                + (speed_kmh - self._min_speed) * angle_range / speed_range_kmh
+                + (speed_mph - self._min_speed) * angle_range / speed_range
             )
             angle_rad = math.radians(angle)
 
             # Determine tick type
-            is_major = speed_mph % major_step_mph == 0  # Every 10 mph
-            is_medium = not is_major and speed_mph % medium_step_mph == 0  # Every 5 mph
+            is_major = speed_mph % major_step_mph == 0  # Every 5 mph
 
             # Calculate inner position based on tick type
             if is_major:
                 inner_radius = radius * 0.7  # Major ticks start farthest in
                 outer_radius = radius * 0.85  # Major ticks are longest
-            elif is_medium:
-                inner_radius = radius * 0.75  # Medium ticks - taller than minor
-                outer_radius = radius * 0.85  # Same outer position
             else:  # minor tick
                 inner_radius = radius * 0.8  # Minor ticks are shortest
                 outer_radius = radius * 0.85  # Same outer position
@@ -240,8 +230,6 @@ class SpeedometerWidget(QWidget):
             # Draw the tick mark with appropriate pen
             if is_major:
                 painter.setPen(major_tick_pen)
-            elif is_medium:
-                painter.setPen(minor_tick_pen)
             else:
                 painter.setPen(micro_tick_pen)
 
@@ -292,9 +280,8 @@ class SpeedometerWidget(QWidget):
     def _draw_digital_readout(self, painter, center_x, center_y, radius):
         """Draw the digital speed readout in mi/h and acceleration in G's."""
         # --- Speed ---
-        # Convert speed to mi/h
-        speed_mph = self._speed * 0.621371
-        speed_text = f"{speed_mph:.1f} mi/h"
+        # No conversion needed since we're already using mi/h internally
+        speed_text = f"{self._speed:.1f} mi/h"
 
         # Set up font for speed
         speed_font = QFont("Arial", 16, QFont.Bold)
@@ -367,7 +354,7 @@ class SpeedometerWidget(QWidget):
         )
 
         # Define acceleration limits and ticks in m/s²
-        accel_limit_ms2 = 5.0  # Range is -5 to 5 m/s²
+        accel_limit_ms2 = config.ACCEL_MAX  # Range is -ACCEL_MAX to ACCEL_MAX m/s²
         accel_marks_ms2 = [
             -accel_limit_ms2,
             -accel_limit_ms2 / 2,
@@ -415,7 +402,7 @@ class SpeedometerWidget(QWidget):
 
         # Calculate position for acceleration indicator
         normalized_accel_indicator = (
-            max(-accel_limit_ms2, min(accel_limit_ms2, self._acceleration))
+            max(config.ACCEL_MIN, min(config.ACCEL_MAX, self._acceleration))
             / accel_limit_ms2
         )
         accel_pos_x = center_x + normalized_accel_indicator * (

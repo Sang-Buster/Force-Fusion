@@ -18,6 +18,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
+# Imported config from force_fusion
+from force_fusion import config
 from force_fusion.widgets.attitude import AttitudeWidget
 from force_fusion.widgets.heading import HeadingWidget
 from force_fusion.widgets.mapbox_view import MapboxView
@@ -72,12 +74,17 @@ class TestWindow(QMainWindow):
             "pitch": 0.0,
             "roll": 0.0,
             "heading": 0.0,
-            "forces": {"FL": 2500.0, "FR": 2500.0, "RL": 2500.0, "RR": 2500.0},
+            "forces": {
+                "FL": config.TIRE_FORCE_NORMAL,
+                "FR": config.TIRE_FORCE_NORMAL,
+                "RL": config.TIRE_FORCE_NORMAL,
+                "RR": config.TIRE_FORCE_NORMAL,
+            },
         }
 
     def start_test(self):
         """Start the animation test."""
-        self.timer.start(100)  # Update every 100ms
+        self.timer.start(config.SPEED_UPDATE_INTERVAL)
         self.start_button.setEnabled(False)
         self.stop_button.setEnabled(True)
 
@@ -121,16 +128,28 @@ class TestWindow(QMainWindow):
         long_transfer = self.test_data["acceleration"] * 100
 
         self.test_data["forces"]["FL"] = (
-            2500 - long_transfer + lat_transfer + random.uniform(-50, 50)
+            config.TIRE_FORCE_NORMAL
+            - long_transfer
+            + lat_transfer
+            + random.uniform(-50, 50)
         )
         self.test_data["forces"]["FR"] = (
-            2500 - long_transfer - lat_transfer + random.uniform(-50, 50)
+            config.TIRE_FORCE_NORMAL
+            - long_transfer
+            - lat_transfer
+            + random.uniform(-50, 50)
         )
         self.test_data["forces"]["RL"] = (
-            2500 + long_transfer + lat_transfer + random.uniform(-50, 50)
+            config.TIRE_FORCE_NORMAL
+            + long_transfer
+            + lat_transfer
+            + random.uniform(-50, 50)
         )
         self.test_data["forces"]["RR"] = (
-            2500 + long_transfer - lat_transfer + random.uniform(-50, 50)
+            config.TIRE_FORCE_NORMAL
+            + long_transfer
+            - lat_transfer
+            + random.uniform(-50, 50)
         )
 
         # Ensure forces are within limits
@@ -258,7 +277,7 @@ def test_tire_force():
         counter = test_data["counter"]
 
         # Maximum force and cycle period
-        max_force = 2500.0  # Maximum force in Newtons
+        max_force = config.TIRE_FORCE_MAX  # Maximum force in Newtons
         cycle_period = 300  # Total cycle time (3 seconds at 100ms timer)
 
         # Update each tire with proper phase offset
@@ -291,7 +310,7 @@ def test_tire_force():
         rr_widget.set_force(test_data["forces"]["RR"])
 
     timer.timeout.connect(update_data)
-    timer.start(100)
+    timer.start(config.SPEED_UPDATE_INTERVAL)
 
     window.show()
     sys.exit(app.exec_())

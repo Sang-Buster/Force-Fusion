@@ -55,7 +55,7 @@ class TileManager(QObject):
         """Create a placeholder image to use when network is unavailable"""
         try:
             image = QImage(256, 256, QImage.Format_ARGB32)
-            image.fill(QColor(60, 60, 60))
+            image.fill(QColor(config.BACKGROUND_COLOR))
 
             # Draw a simple grid pattern
             painter = QPainter(image)
@@ -204,7 +204,7 @@ class MapDetailDialog(QDialog):
         self.zoom_slider = QSlider(Qt.Horizontal)
         self.zoom_slider.setMinimum(10)
         self.zoom_slider.setMaximum(18)
-        self.zoom_slider.setValue(15)
+        self.zoom_slider.setValue(config.DEFAULT_ZOOM)
         self.zoom_slider.valueChanged.connect(self.on_zoom_changed)
         control_layout.addWidget(QLabel("Zoom:"))
         control_layout.addWidget(self.zoom_slider)
@@ -213,14 +213,14 @@ class MapDetailDialog(QDialog):
         layout.addLayout(control_layout)
 
         # Map settings
-        self.zoom = 15
+        self.zoom = config.DEFAULT_ZOOM
         self.tile_manager = TileManager(self)
         self.tile_manager.tileLoaded.connect(self.update)
 
         # Timer to periodically update the dialog
         self._update_timer = QTimer(self)
         self._update_timer.timeout.connect(self._update_from_parent)
-        self._update_timer.start(200)  # Update every 200ms
+        self._update_timer.start(config.MAP_UPDATE_INTERVAL)
 
         # Center the dialog on the screen
         center_point = parent.mapToGlobal(parent.rect().center())
@@ -539,7 +539,9 @@ class MinimapWidget(QWidget):
 
         # Cache for the current background tiles
         self._background_tiles = []
-        self._map_zoom = 15  # Map zoom level for tiles (different from widget zoom)
+        self._map_zoom = (
+            config.DEFAULT_ZOOM
+        )  # Map zoom level for tiles (different from widget zoom)
 
         # Set up cursor to indicate it's clickable
         self.setCursor(Qt.PointingHandCursor)

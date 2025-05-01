@@ -99,10 +99,10 @@ class WebSocketServer:
         self.running = False
 
         # Lon/Lat boundaries for random data generation
-        self.lon_min = -81.053238
-        self.lon_max = -81.044849
-        self.lat_min = 29.186305
-        self.lat_max = 29.192406
+        self.lon_min = config.DEFAULT_CENTER[0] - 0.01
+        self.lon_max = config.DEFAULT_CENTER[0] + 0.01
+        self.lat_min = config.DEFAULT_CENTER[1] - 0.01
+        self.lat_max = config.DEFAULT_CENTER[1] + 0.01
 
         # Initial position and orientation
         self.latitude = self.lat_min + (self.lat_max - self.lat_min) / 2
@@ -272,7 +272,7 @@ class MapboxView(QWidget):
         self._placeholder.setAlignment(Qt.AlignCenter)
         self._placeholder.setStyleSheet(
             f"color: {config.TEXT_COLOR}; "
-            "background-color: #2d2d2d; "
+            f"background-color: {config.BACKGROUND_COLOR}; "
             "border: 1px solid #555; "
             "border-radius: 4px; "
             "padding: 10px;"

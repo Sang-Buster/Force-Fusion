@@ -121,7 +121,7 @@ class HeadingWidget(QWidget):
             if angle % 90 == 0:
                 # Cardinal directions (N, E, S, W)
                 inner_radius = radius * 0.7
-                painter.setPen(QPen(QColor(255, 255, 255), 2))
+                painter.setPen(QPen(QColor(config.TEXT_COLOR), 2))
                 painter.setFont(cardinal_font)
 
                 # Determine label text

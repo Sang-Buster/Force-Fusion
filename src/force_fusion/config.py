@@ -7,12 +7,12 @@ Contains constants for display ranges, units, update intervals, and styling.
 GPS_UPDATE_INTERVAL = 1000
 SPEED_UPDATE_INTERVAL = 100
 ATTITUDE_UPDATE_INTERVAL = 100
-TIRE_FORCE_UPDATE_INTERVAL = 200
-MAP_UPDATE_INTERVAL = 1000
+TIRE_FORCE_UPDATE_INTERVAL = 100
+MAP_UPDATE_INTERVAL = 100
 
 # Display ranges
 SPEED_MIN = 0
-SPEED_MAX = 160  # km/h
+SPEED_MAX = 60  # mi/h
 ACCEL_MIN = -10  # m/s²
 ACCEL_MAX = 10  # m/s²
 PITCH_MIN = -40  # degrees
