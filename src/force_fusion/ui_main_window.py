@@ -2,11 +2,12 @@
 Main window UI definition for Force-Fusion dashboard.
 """
 
-from PyQt5.QtCore import QSize
+from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (
     QFrame,
     QGridLayout,
     QHBoxLayout,
+    QLabel,
     QMainWindow,
     QSizePolicy,
     QVBoxLayout,
@@ -43,7 +44,24 @@ class Ui_MainWindow:
         # Top section - Horizontal layout for circular widgets
         self.topFrame = QFrame()
         self.topFrame.setFrameShape(QFrame.StyledPanel)
-        self.topLayout = QHBoxLayout(self.topFrame)
+        self.topLayout = QVBoxLayout(self.topFrame)  # Changed to VBox to include titles
+        self.topLayout.setContentsMargins(0, 0, 0, 0)
+        self.topLayout.setSpacing(0)
+
+        # Add a container for the title labels
+        self.titleContainer = QWidget()
+        self.titleLayout = QHBoxLayout(self.titleContainer)
+        self.titleLayout.setContentsMargins(0, 0, 0, 5)  # Add margin at bottom
+
+        # Add a container for the circular widgets
+        self.circleContainer = QWidget()
+        self.circleLayout = QHBoxLayout(self.circleContainer)
+        self.circleLayout.setContentsMargins(0, 0, 0, 0)
+        self.circleLayout.setSpacing(5)
+
+        # Add the containers to the top layout
+        self.topLayout.addWidget(self.titleContainer)
+        self.topLayout.addWidget(self.circleContainer)
 
         # Bottom section - horizontal layout for tire forces and map
         self.bottomFrame = QFrame()
@@ -57,10 +75,6 @@ class Ui_MainWindow:
         # Reduce spacing and margins for more compact layout
         self.mainLayout.setContentsMargins(10, 5, 10, 10)
         self.mainLayout.setSpacing(5)
-
-        # Add margin between title and widgets in the top row
-        self.topLayout.setContentsMargins(0, 20, 0, 0)
-        self.topLayout.setSpacing(5)
 
         # Create widgets
         self.setupTopWidgets()
@@ -87,11 +101,34 @@ class Ui_MainWindow:
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             widget.setMinimumSize(QSize(200, 200))
 
-        # Add widgets to horizontal layout (order: Minimap, Speedometer, Attitude, GG Diagram)
-        self.topLayout.addWidget(self.minimapWidget)
-        self.topLayout.addWidget(self.speedometerWidget)
-        self.topLayout.addWidget(self.attitudeWidget)
-        self.topLayout.addWidget(self.ggDiagramWidget)
+        # Create title labels
+        self.minimapTitle = QLabel("2D Minimap")
+        self.speedometerTitle = QLabel("Speedometer")
+        self.attitudeTitle = QLabel("Attitude")
+        self.ggDiagramTitle = QLabel("G-G Diagram")
+
+        # Set styles for title labels
+        title_style = f"color: {config.TEXT_COLOR}; font-family: Arial; font-size: 12px; font-weight: bold;"
+        for label in [
+            self.minimapTitle,
+            self.speedometerTitle,
+            self.attitudeTitle,
+            self.ggDiagramTitle,
+        ]:
+            label.setStyleSheet(title_style)
+            label.setAlignment(Qt.AlignCenter)
+
+        # Add title labels to the title layout
+        self.titleLayout.addWidget(self.minimapTitle)
+        self.titleLayout.addWidget(self.speedometerTitle)
+        self.titleLayout.addWidget(self.attitudeTitle)
+        self.titleLayout.addWidget(self.ggDiagramTitle)
+
+        # Add widgets to the circle layout
+        self.circleLayout.addWidget(self.minimapWidget)
+        self.circleLayout.addWidget(self.speedometerWidget)
+        self.circleLayout.addWidget(self.attitudeWidget)
+        self.circleLayout.addWidget(self.ggDiagramWidget)
 
     def setupBottomWidgets(self):
         """Create and place the tire force widgets and mapbox view."""

@@ -680,11 +680,6 @@ class MinimapWidget(QWidget):
         # Draw current position marker
         self._draw_position_marker(painter, width, height)
 
-        # Draw title
-        painter.setPen(QColor(config.TEXT_COLOR))
-        painter.setFont(QFont("Arial", 10))
-        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "2D Minimap")
-
     def _draw_satellite_background(self, painter, center_x, center_y, radius):
         """Draw satellite imagery in the background circle."""
         # Create circular clipping path

@@ -122,11 +122,6 @@ class SpeedometerWidget(QWidget):
         # Draw acceleration bar (position adjusted if necessary)
         self._draw_acceleration_bar(painter, center_x, center_y, radius)
 
-        # Draw title with more margin (changed from y=5 to y=20)
-        painter.setPen(QColor(config.TEXT_COLOR))
-        painter.setFont(QFont("Arial", 10))
-        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Speedometer")
-
     def _draw_background(self, painter, center_x, center_y, radius):
         """Draw the speedometer background."""
         # Outer circle

@@ -127,10 +127,10 @@ class AttitudeWidget(QWidget):
         # Draw plus and minus signs
         self._draw_plus_minus_signs(painter, center_x, center_y, radius)
 
-        # Draw title
-        painter.setPen(QColor(config.TEXT_COLOR))
-        painter.setFont(QFont("Arial", 10))
-        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Attitude")
+        # Remove title drawing - now handled by main UI
+        # painter.setPen(QColor(config.TEXT_COLOR))
+        # painter.setFont(QFont("Arial", 10))
+        # painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "Attitude")
 
     def _draw_background(self, painter, center_x, center_y, radius):
         """Draw the outer bezel and background."""

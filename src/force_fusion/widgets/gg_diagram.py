@@ -144,11 +144,6 @@ class GgDiagramWidget(QWidget):
         # Draw numeric display
         self._draw_numeric_display(painter, width, height)
 
-        # Draw title
-        painter.setPen(QColor(config.TEXT_COLOR))
-        painter.setFont(QFont("Arial", 10))
-        painter.drawText(QRectF(0, 5, width, 20), Qt.AlignCenter, "G-G Diagram")
-
     def _draw_background(self, painter, center_x, center_y, radius):
         """Draw the background and maximum G envelope."""
         # Draw outer circle (bezel) using QRectF
@@ -257,7 +252,7 @@ class GgDiagramWidget(QWidget):
         painter.setFont(QFont("Arial", 9))
 
         # X-axis label (Lateral G)
-        x_label_rect = QRectF(center_x + radius * 0.8, center_y, 100, 20)
+        x_label_rect = QRectF(center_x + radius * 0.8, center_y + 10, 100, 20)
         painter.drawText(x_label_rect, Qt.AlignLeft | Qt.AlignVCenter, "Ay")
 
         # Y-axis label (Longitudinal G) - moved down to avoid overlap with title
