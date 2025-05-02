@@ -9,19 +9,8 @@ SPEED_UPDATE_INTERVAL = 100
 ATTITUDE_UPDATE_INTERVAL = 100
 TIRE_FORCE_UPDATE_INTERVAL = 100
 MAP_UPDATE_INTERVAL = 100
+GG_DIAGRAM_UPDATE_INTERVAL = 100
 
-# Display ranges
-SPEED_MIN = 0
-SPEED_MAX = 60  # mi/h
-ACCEL_MIN = -10  # m/s²
-ACCEL_MAX = 10  # m/s²
-PITCH_MIN = -40  # degrees
-PITCH_MAX = 40  # degrees
-ROLL_MIN = -40  # degrees
-ROLL_MAX = 40  # degrees
-TIRE_FORCE_MIN = 0  # N
-TIRE_FORCE_MAX = 2500  # N
-TIRE_FORCE_NORMAL = 2500  # N
 
 # Mapbox configuration
 # Replace with your actual token when using the application
@@ -32,6 +21,27 @@ DEFAULT_ZOOM = 15
 # Minimap configuration
 TRAJECTORY_HISTORY_LENGTH = 5000  # Maximum number of points to keep
 TRAJECTORY_LINE_WIDTH = 2
+
+# Speedometer configuration
+SPEED_MIN = 0
+SPEED_MAX = 60  # mi/h
+ACCEL_MIN = -10  # m/s²
+ACCEL_MAX = 10  # m/s²
+
+# Attitude indicator configuration
+PITCH_MIN = -40  # degrees
+PITCH_MAX = 40  # degrees
+ROLL_MIN = -40  # degrees
+ROLL_MAX = 40  # degrees
+
+# GG Diagram configuration
+GG_DIAGRAM_MIN_G = -1.5  # Minimum G force
+GG_DIAGRAM_MAX_G = 1.5  # Maximum G force
+
+# Tire force configuration
+TIRE_FORCE_MIN = 0  # N
+TIRE_FORCE_MAX = 2500  # N
+TIRE_FORCE_NORMAL = 2500  # N
 
 # UI colors
 BACKGROUND_COLOR = "#1f1f1f"
@@ -49,3 +59,9 @@ HEADING_COLOR = "#ff0000"
 TIRE_FORCE_COLOR_NORMAL = "#f1c40f"
 TIRE_FORCE_COLOR_HIGH = "#e74c3c"
 TIRE_FORCE_COLOR_LOW = "#2ecc71"
+TIRE_FORCE_COLOR_LIME = "#b4ff32"
+TIRE_FORCE_COLOR_ORANGE = "#ff7800"
+ROLL_POINTER_COLOR = "#00ffff"
+PITCH_POINTER_COLOR = "#ffbf00"
+BEZEL_COLOR = "#3c3c3c"
+BEZEL_BORDER_COLOR = "#323232"

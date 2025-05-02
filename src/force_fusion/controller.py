@@ -37,11 +37,20 @@ class DashboardController(QObject):
         # Set up moving averages for smoothing
         self._speed_history = []
         self._accel_history = []
+        self._lateral_accel_history = []  # New for lateral acceleration
         self._position_history = []
         self._MAX_HISTORY = 10
 
         # Flag to accumulate position history for the minimap
         self._record_trajectory = True
+
+        # Configure GG diagram update interval
+        if hasattr(self.main_window, "gg_diagram") and hasattr(
+            self.main_window.gg_diagram, "set_update_interval"
+        ):
+            self.main_window.gg_diagram.set_update_interval(
+                config.GG_DIAGRAM_UPDATE_INTERVAL
+            )
 
         # Start the sensor provider
         self.sensor_provider.start()
@@ -55,9 +64,16 @@ class DashboardController(QObject):
         self.sensor_provider.speed_changed.connect(self._on_speed_changed)
         self.sensor_provider.acceleration_changed.connect(self._on_acceleration_changed)
 
+        # Connect lateral acceleration signal
+        self.sensor_provider.lateral_accel_changed.connect(
+            self._on_lateral_accel_changed
+        )
+
         # Connect attitude signals
         self.sensor_provider.pitch_changed.connect(self._on_pitch_changed)
         self.sensor_provider.roll_changed.connect(self._on_roll_changed)
+
+        # Connect heading for the mapbox view only
         self.sensor_provider.heading_changed.connect(self._on_heading_changed)
 
         # Connect tire force signals
@@ -118,6 +134,41 @@ class DashboardController(QObject):
         # Update the speedometer's acceleration display
         self.main_window.speedometer.update_acceleration(smooth_accel)
 
+        # Convert from m/s² to G (1G = 9.81 m/s²) for GG diagram
+        accel_g = smooth_accel / 9.81
+
+        # Update the GG diagram if lateral accel data is available
+        if hasattr(self, "_smooth_lateral_accel"):
+            self.main_window.gg_diagram.setAccel(accel_g, self._smooth_lateral_accel)
+
+    def _on_lateral_accel_changed(self, lateral_accel):
+        """
+        Process lateral acceleration updates.
+
+        Args:
+            lateral_accel: Lateral acceleration in m/s²
+        """
+        # Apply moving average for smoothing
+        self._lateral_accel_history.append(lateral_accel)
+        if len(self._lateral_accel_history) > self._MAX_HISTORY:
+            self._lateral_accel_history.pop(0)
+
+        self._smooth_lateral_accel = sum(self._lateral_accel_history) / len(
+            self._lateral_accel_history
+        )
+
+        # Convert from m/s² to G (1G = 9.81 m/s²) for GG diagram
+        lateral_accel_g = self._smooth_lateral_accel / 9.81
+
+        # Get current longitudinal acceleration
+        if hasattr(self, "_accel_history") and self._accel_history:
+            # Calculate average of acceleration history
+            smooth_accel = sum(self._accel_history) / len(self._accel_history)
+            # Convert to G
+            accel_g = smooth_accel / 9.81
+            # Update the GG diagram
+            self.main_window.gg_diagram.setAccel(accel_g, lateral_accel_g)
+
     def _on_pitch_changed(self, pitch):
         """
         Process pitch updates.
@@ -151,10 +202,7 @@ class DashboardController(QObject):
         Args:
             heading: Heading in degrees (0-360)
         """
-        # Update the heading indicator
-        self.main_window.heading.set_heading(heading)
-
-        # Update the Mapbox view
+        # Update the mapbox view only (heading widget was replaced with gg_diagram)
         self.main_window.mapbox.update_heading(heading)
 
     def _on_tire_forces_changed(self, forces):
@@ -190,5 +238,7 @@ class DashboardController(QObject):
             widget_type: String identifying the widget type
             rate_ms: Update rate in milliseconds
         """
-        # Implementation depends on specific widget requirements
-        pass
+        if widget_type == "gg_diagram" and hasattr(self.main_window, "gg_diagram"):
+            if hasattr(self.main_window.gg_diagram, "set_update_interval"):
+                self.main_window.gg_diagram.set_update_interval(rate_ms)
+        # Implementation for other widget types can be added here

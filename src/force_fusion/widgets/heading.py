@@ -74,8 +74,8 @@ class HeadingWidget(QWidget):
         radius = min(width, height) // 2 - 10
 
         # Draw background circle
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.setBrush(QColor(40, 40, 40))
+        painter.setPen(QPen(QColor(config.BEZEL_BORDER_COLOR), 1))
+        painter.setBrush(QColor(config.BEZEL_COLOR))
         painter.drawEllipse(
             center_x - radius, center_y - radius, radius * 2, radius * 2
         )

@@ -8,9 +8,11 @@ This package contains all the custom widgets used by the Force-Fusion dashboard:
 - HeadingWidget: Course-over-ground compass
 - TireForceWidget: Tire normal force display
 - MapboxView: 3D map with vehicle model
+- GgDiagramWidget: Lateral vs. longitudinal G-force diagram
 """
 
 from force_fusion.widgets.attitude import AttitudeWidget
+from force_fusion.widgets.gg_diagram import GgDiagramWidget
 from force_fusion.widgets.heading import HeadingWidget
 from force_fusion.widgets.mapbox_view import MapboxView
 from force_fusion.widgets.minimap import MinimapWidget
@@ -24,4 +26,5 @@ __all__ = [
     "HeadingWidget",
     "TireForceWidget",
     "MapboxView",
+    "GgDiagramWidget",
 ]

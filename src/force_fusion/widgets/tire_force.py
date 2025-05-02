@@ -104,8 +104,8 @@ class TireForceWidget(QWidget):
 
     def _draw_background_circle(self, painter, center_x, center_y, max_radius):
         """Draw the background reference circle."""
-        painter.setPen(QPen(QColor(60, 60, 60), 1))
-        painter.setBrush(QColor(40, 40, 40))
+        painter.setPen(QPen(QColor(config.BEZEL_BORDER_COLOR), 1))
+        painter.setBrush(QColor(config.BEZEL_COLOR))
         painter.drawEllipse(
             center_x - max_radius, center_y - max_radius, max_radius * 2, max_radius * 2
         )
@@ -127,50 +127,69 @@ class TireForceWidget(QWidget):
         # Calculate force percentage from 0 to 100%
         force_percent = (self._force / self._max_force) * 100
 
-        # Determine color based on force level using config colors
-        # Low force (0-33%): Green (TIRE_FORCE_COLOR_LOW)
-        # Normal force (33-66%): Yellow (TIRE_FORCE_COLOR_NORMAL)
-        # High force (66-100%): Red (TIRE_FORCE_COLOR_HIGH)
+        # Create a smoother, more vibrant color gradient based on force percentage
+        # Using more color stops: green -> lime -> yellow -> orange -> red
 
-        # Convert hex color values to QColor
-        low_color = QColor(config.TIRE_FORCE_COLOR_LOW)
-        normal_color = QColor(config.TIRE_FORCE_COLOR_NORMAL)
-        high_color = QColor(config.TIRE_FORCE_COLOR_HIGH)
+        # Base colors from config with fallbacks to standard colors
+        green_color = QColor(config.TIRE_FORCE_COLOR_LOW)
+        lime_color = QColor(config.TIRE_FORCE_COLOR_LIME)
+        yellow_color = QColor(config.TIRE_FORCE_COLOR_NORMAL)
+        orange_color = QColor(config.TIRE_FORCE_COLOR_ORANGE)
+        red_color = QColor(config.TIRE_FORCE_COLOR_HIGH)
 
-        if force_percent <= 33:
-            # Low force: interpolate from dark green to full green
-            color = low_color
-            factor = (force_percent / 33) * 30 + 100  # 100% to 130%
-            color = color.lighter(int(factor))
-        elif force_percent <= 66:
-            # Normal force: interpolate from green to yellow
-            t = (force_percent - 33) / 33  # 0 to 1 within this range
+        # Determine color based on 5 segments for smoother transition
+        if force_percent <= 20:
+            # Green range: from dark green to bright green
+            t = force_percent / 20.0  # 0 to 1 within this range
             color = QColor(
-                int(low_color.red() + t * (normal_color.red() - low_color.red())),
-                int(low_color.green() + t * (normal_color.green() - low_color.green())),
-                int(low_color.blue() + t * (normal_color.blue() - low_color.blue())),
+                int(green_color.red() * (1 - t) + green_color.red() * 1.2 * t),
+                int(green_color.green() * (1 - t) + green_color.green() * 1.2 * t),
+                int(green_color.blue() * (1 - t) + green_color.blue() * 0.8 * t),
+            )
+        elif force_percent <= 40:
+            # Green to lime transition
+            t = (force_percent - 20) / 20.0  # 0 to 1 within this range
+            color = QColor(
+                int(green_color.red() * (1 - t) + lime_color.red() * t),
+                int(green_color.green() * (1 - t) + lime_color.green() * t),
+                int(green_color.blue() * (1 - t) + lime_color.blue() * t),
+            )
+        elif force_percent <= 60:
+            # Lime to yellow transition
+            t = (force_percent - 40) / 20.0  # 0 to 1 within this range
+            color = QColor(
+                int(lime_color.red() * (1 - t) + yellow_color.red() * t),
+                int(lime_color.green() * (1 - t) + yellow_color.green() * t),
+                int(lime_color.blue() * (1 - t) + yellow_color.blue() * t),
+            )
+        elif force_percent <= 80:
+            # Yellow to orange transition
+            t = (force_percent - 60) / 20.0  # 0 to 1 within this range
+            color = QColor(
+                int(yellow_color.red() * (1 - t) + orange_color.red() * t),
+                int(yellow_color.green() * (1 - t) + orange_color.green() * t),
+                int(yellow_color.blue() * (1 - t) + orange_color.blue() * t),
             )
         else:
-            # High force: interpolate from yellow to red
-            t = (force_percent - 66) / 34  # 0 to 1 within this range
+            # Orange to red transition
+            t = (force_percent - 80) / 20.0  # 0 to 1 within this range
             color = QColor(
-                int(normal_color.red() + t * (high_color.red() - normal_color.red())),
-                int(
-                    normal_color.green()
-                    + t * (high_color.green() - normal_color.green())
-                ),
-                int(
-                    normal_color.blue() + t * (high_color.blue() - normal_color.blue())
-                ),
+                int(orange_color.red() * (1 - t) + red_color.red() * t),
+                int(orange_color.green() * (1 - t) + red_color.green() * t),
+                int(orange_color.blue() * (1 - t) + red_color.blue() * t),
             )
 
-        # Create radial gradient with dynamic colors
+        # Create enhanced radial gradient with three color stops
         gradient = QRadialGradient(center_x, center_y, radius)
-        gradient.setColorAt(0, color.lighter(130))
+        # Center of circle is brightest
+        gradient.setColorAt(0, color.lighter(150))
+        # Middle area transition
+        gradient.setColorAt(0.5, color.lighter(120))
+        # Outer edge is the base color
         gradient.setColorAt(1, color)
 
-        # Draw the force circle
-        painter.setPen(QPen(color, 2))
+        # Draw the force circle with enhanced gradient
+        painter.setPen(QPen(color.darker(110), 2))
         painter.setBrush(gradient)
         painter.drawEllipse(
             int(center_x - radius),

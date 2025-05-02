@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (
 
 from force_fusion import config
 from force_fusion.widgets.attitude import AttitudeWidget
-from force_fusion.widgets.heading import HeadingWidget
+from force_fusion.widgets.gg_diagram import GgDiagramWidget
 from force_fusion.widgets.mapbox_view import MapboxView
 from force_fusion.widgets.minimap import MinimapWidget
 from force_fusion.widgets.speedometer import SpeedometerWidget
@@ -75,23 +75,23 @@ class Ui_MainWindow:
         self.minimapWidget = MinimapWidget()
         self.speedometerWidget = SpeedometerWidget()
         self.attitudeWidget = AttitudeWidget()
-        self.headingWidget = HeadingWidget()
+        self.ggDiagramWidget = GgDiagramWidget()
 
         # Set size policies for consistent sizing
         for widget in [
             self.minimapWidget,
             self.speedometerWidget,
             self.attitudeWidget,
-            self.headingWidget,
+            self.ggDiagramWidget,
         ]:
             widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
             widget.setMinimumSize(QSize(200, 200))
 
-        # Add widgets to horizontal layout (order: Minimap, Speedometer, Attitude, Heading)
+        # Add widgets to horizontal layout (order: Minimap, Speedometer, Attitude, GG Diagram)
         self.topLayout.addWidget(self.minimapWidget)
         self.topLayout.addWidget(self.speedometerWidget)
         self.topLayout.addWidget(self.attitudeWidget)
-        self.topLayout.addWidget(self.headingWidget)
+        self.topLayout.addWidget(self.ggDiagramWidget)
 
     def setupBottomWidgets(self):
         """Create and place the tire force widgets and mapbox view."""
@@ -166,7 +166,7 @@ class MainWindow(QMainWindow):
         self.minimap = self.ui.minimapWidget
         self.speedometer = self.ui.speedometerWidget
         self.attitude = self.ui.attitudeWidget
-        self.heading = self.ui.headingWidget
+        self.gg_diagram = self.ui.ggDiagramWidget
         self.tire_forces = {
             "FL": self.ui.tireForceFrontLeft,
             "FR": self.ui.tireForceFrontRight,

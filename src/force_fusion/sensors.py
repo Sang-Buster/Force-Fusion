@@ -22,6 +22,7 @@ class SensorProvider(QObject):
     position_changed = pyqtSignal(float, float)  # lat, lon
     speed_changed = pyqtSignal(float)  # km/h
     acceleration_changed = pyqtSignal(float)  # m/s²
+    lateral_accel_changed = pyqtSignal(float)  # m/s²
     pitch_changed = pyqtSignal(float)  # degrees
     roll_changed = pyqtSignal(float)  # degrees
     heading_changed = pyqtSignal(float)  # degrees (0-360)
@@ -52,6 +53,7 @@ class SensorProvider(QObject):
         self._longitude = config.DEFAULT_CENTER[0]  # Default longitude
         self._speed = 0.0  # km/h
         self._acceleration = 0.0  # m/s²
+        self._lateral_accel = 0.0  # m/s², positive = right
         self._pitch = 0.0  # degrees
         self._roll = 0.0  # degrees
         self._heading = 0.0  # degrees
@@ -180,9 +182,24 @@ class SensorProvider(QObject):
                     config.ACCEL_MIN
                 )  # Use full negative acceleration range
 
+            # Generate lateral acceleration value (simulated)
+            # Create a sinusoidal value that varies independently of the forward accel
+            lateral_cycle = int(
+                self._speed_animation_cycle * 0.6
+            )  # Different period for variety
+            lateral_position = counter % lateral_cycle
+            lateral_ratio = lateral_position / lateral_cycle
+            lateral_sin = math.sin(lateral_ratio * math.pi * 2)
+
+            # Scale based on speed (more speed = more potential lateral G)
+            speed_factor = self._speed / config.SPEED_MAX
+            self._lateral_accel = lateral_sin * config.ACCEL_MAX * 0.5 * speed_factor
+
         # Emit the signals
         self.speed_changed.emit(self._speed)
         self.acceleration_changed.emit(self._acceleration)
+        # Also emit lateral acceleration signal
+        self.lateral_accel_changed.emit(self._lateral_accel)
 
     def _update_attitude(self):
         """Update pitch and roll values and emit signals."""
@@ -234,10 +251,35 @@ class SensorProvider(QObject):
                 ratio = (heading_position - heading_cycle / 2) / (heading_cycle / 2)
                 self._heading = (1 - ratio) * heading_range
 
+            # Generate lateral acceleration based on roll angle and speed
+            # In real vehicles, lateral acceleration is correlated with roll
+            # Simulate this relationship: more roll = more lateral G
+            lateral_accel_factor = 0.25  # m/s² per degree of roll
+            speed_factor = (
+                self._speed / 100.0
+            )  # More speed = more lateral G for same roll
+
+            # Calculate lateral acceleration based on roll
+            # Scale by speed to make it more realistic
+            self._lateral_accel = (
+                self._roll * lateral_accel_factor * (1.0 + speed_factor)
+            )
+
+            # Add some variation to make it less directly correlated
+            # In a real car, lateral accel leads to roll, not the other way around
+            variation_cycle = self._attitude_animation_cycle * 0.3
+            variation_position = counter % variation_cycle
+            variation_ratio = variation_position / variation_cycle
+            variation = (variation_ratio - 0.5) * 2.0  # -1.0 to 1.0
+
+            # Add variation to lateral acceleration
+            self._lateral_accel += variation * config.ACCEL_MAX * 0.2
+
         # Emit the signals
         self.pitch_changed.emit(self._pitch)
         self.roll_changed.emit(self._roll)
         self.heading_changed.emit(self._heading)
+        self.lateral_accel_changed.emit(self._lateral_accel)
 
     def _update_tire_forces(self):
         """Update tire normal forces and emit signal."""
