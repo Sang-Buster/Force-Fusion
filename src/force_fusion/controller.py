@@ -96,9 +96,7 @@ class DashboardController(QObject):
         # Add to position history (used for trajectory)
         if self._record_trajectory:
             self._position_history.append((latitude, longitude))
-            # Limit the size of the history
-            if len(self._position_history) > config.TRAJECTORY_HISTORY_LENGTH:
-                self._position_history.pop(0)
+            # No limit on trajectory history points
 
     def _on_speed_changed(self, speed):
         """

@@ -131,16 +131,16 @@ class SpeedometerWidget(QWidget):
             center_x - radius, center_y - radius, radius * 2, radius * 2
         )
 
-        # Inner circle with radial gradient
-        gradient = QRadialGradient(center_x, center_y, radius * 0.8)
+        # Inner circle with radial gradient - reduced size to leave more room for gauge
+        gradient = QRadialGradient(center_x, center_y, radius * 0.75)
         gradient.setColorAt(0, QColor(50, 50, 50))
         gradient.setColorAt(1, QColor(25, 25, 25))
         painter.setBrush(gradient)
         painter.drawEllipse(
-            int(center_x - radius * 0.8),
-            int(center_y - radius * 0.8),
-            int(radius * 1.6),
-            int(radius * 1.6),
+            int(center_x - radius * 0.75),
+            int(center_y - radius * 0.75),
+            int(radius * 1.5),
+            int(radius * 1.5),
         )
 
     def _draw_ticks_and_labels(self, painter, center_x, center_y, radius):
@@ -164,12 +164,12 @@ class SpeedometerWidget(QWidget):
         )
         minor_step_mph = 1  # Show minor ticks every 1 mph
 
-        # Draw arc
+        # Draw arc - expanded to use more of the circle
         arc_rect = QRectF(
-            center_x - radius * 0.85,
-            center_y - radius * 0.85,
-            radius * 1.7,
-            radius * 1.7,
+            center_x - radius * 0.95,
+            center_y - radius * 0.95,
+            radius * 1.9,
+            radius * 1.9,
         )
 
         # Draw gradient arc from green to red
@@ -181,7 +181,7 @@ class SpeedometerWidget(QWidget):
         yellow = QColor(config.WARNING_COLOR)
         red = QColor(config.DANGER_COLOR)
 
-        # Draw arcs in segments
+        # Draw arcs in segments - increased pen width for more visible arc
         segment_count = 3
         for i in range(segment_count):
             segment_start = start_angle + (span_angle * i) // segment_count
@@ -194,7 +194,7 @@ class SpeedometerWidget(QWidget):
             else:
                 color = red
 
-            painter.setPen(QPen(color, 3))
+            painter.setPen(QPen(color, 4))  # Increased thickness
             painter.drawArc(arc_rect, segment_start, segment_span)
 
         # Draw ticks and labels in mph directly
@@ -209,13 +209,13 @@ class SpeedometerWidget(QWidget):
             # Determine tick type
             is_major = speed_mph % major_step_mph == 0  # Every 5 mph
 
-            # Calculate inner position based on tick type
+            # Calculate inner position based on tick type - adjusted for expanded arc
             if is_major:
-                inner_radius = radius * 0.7  # Major ticks start farthest in
-                outer_radius = radius * 0.85  # Major ticks are longest
+                inner_radius = radius * 0.75  # Major ticks start farthest in
+                outer_radius = radius * 0.95  # Extended to match the expanded arc
             else:  # minor tick
-                inner_radius = radius * 0.8  # Minor ticks are shortest
-                outer_radius = radius * 0.85  # Same outer position
+                inner_radius = radius * 0.85  # Minor ticks are shorter
+                outer_radius = radius * 0.95  # Extended to match the expanded arc
 
             inner_x = center_x + inner_radius * math.cos(angle_rad)
             inner_y = center_y - inner_radius * math.sin(angle_rad)
@@ -232,10 +232,10 @@ class SpeedometerWidget(QWidget):
 
             # Draw speed label for major ticks
             if is_major:
-                # Draw speed label in mph
+                # Draw speed label in mph - adjusted position for expanded arc
                 painter.setPen(label_pen)
-                label_x = center_x + (radius * 0.6) * math.cos(angle_rad)
-                label_y = center_y - (radius * 0.6) * math.sin(angle_rad)
+                label_x = center_x + (radius * 0.65) * math.cos(angle_rad)
+                label_y = center_y - (radius * 0.65) * math.sin(angle_rad)
 
                 # Adjust for text metrics
                 text = str(speed_mph)
@@ -258,8 +258,8 @@ class SpeedometerWidget(QWidget):
         # Convert speed angle to radians
         angle_rad = math.radians(self._speed_angle)
 
-        # Calculate needle end point
-        needle_length = radius * 0.75
+        # Calculate needle end point - extended to match expanded arc
+        needle_length = radius * 0.85  # Increased from 0.75 to reach the expanded arc
         end_x = center_x + needle_length * math.cos(angle_rad)
         end_y = center_y - needle_length * math.sin(angle_rad)
 

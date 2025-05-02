@@ -228,6 +228,27 @@ class ConfigManager:
             return "Minimum G force to display in GG diagram"
         elif key == "GG_DIAGRAM_MAX_G":
             return "Maximum G force to display in GG diagram"
+        # Map configuration comments
+        elif key == "TILE_SIZE":
+            return "Standard map tile size in pixels"
+        elif key == "MAP_TILE_URLS":
+            return "URLs for different map tile styles"
+        elif key == "MINIMAP_DEFAULT_STYLE":
+            return "Default map style for minimap (satellite or street)"
+        elif key == "DETAILMAP_DEFAULT_STYLE":
+            return "Default map style for detailed map view (satellite or street)"
+        elif key == "MAP_BUTTON_ACTIVE_STYLE":
+            return "CSS style for active map style button"
+        elif key == "MAP_BUTTON_INACTIVE_STYLE":
+            return "CSS style for inactive map style button"
+        elif key == "MAP_BACKGROUND_COLOR":
+            return "Background color for map displays"
+        elif key == "MAP_GRID_COLOR":
+            return "Grid line color for map overlays"
+        elif key == "MAP_GRID_OPACITY":
+            return "Opacity value (0-255) for map grid overlay"
+        elif key == "TRAJECTORY_LINE_WIDTH":
+            return "Width of trajectory lines on maps"
         # Add more comments as needed
         return ""
 

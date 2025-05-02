@@ -359,10 +359,13 @@ class GgDiagramWidget(QWidget):
         if not self._history:
             return
 
-        # Draw all history points as visible red dots
+        # Draw all history points as visible dots using accent color
         point_size = 3  # Larger size for better visibility
         painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(200, 50, 50, 200))  # Red dots with some transparency
+        # Use accent color with some transparency
+        accent_color = QColor(config.ACCENT_COLOR)
+        accent_color.setAlpha(200)
+        painter.setBrush(accent_color)
 
         for ax, ay in self._history:
             # Calculate screen position - normalize to map the full range to the radius
@@ -380,9 +383,9 @@ class GgDiagramWidget(QWidget):
         x = center_x + (self._ay / self._max_g) * radius
         y = center_y - (self._ax / self._max_g) * radius
 
-        # Draw dot using QRectF
+        # Draw dot using QRectF with accent color
         painter.setPen(Qt.black)
-        painter.setBrush(Qt.red)
+        painter.setBrush(QColor(config.ACCENT_COLOR))
         painter.drawEllipse(QRectF(x - 5, y - 5, 10, 10))
 
         # Draw lines to axes

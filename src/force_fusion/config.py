@@ -16,11 +16,26 @@ GG_DIAGRAM_UPDATE_INTERVAL = 100
 # Replace with your actual token when using the application
 MAPBOX_TOKEN = "YOUR_MAPBOX_TOKEN_HERE"
 DEFAULT_CENTER = [-81.04897348153887, 29.18825368942673]  # [longitude, latitude]
-DEFAULT_ZOOM = 15
+DEFAULT_ZOOM = 17
 
 # Minimap configuration
-TRAJECTORY_HISTORY_LENGTH = 5000  # Maximum number of points to keep
 TRAJECTORY_LINE_WIDTH = 2
+
+# Map tile configuration
+TILE_SIZE = 256  # Standard map tile size in pixels
+MAP_TILE_URLS = {
+    "street": "http://a.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    "satellite": "http://ecn.t0.tiles.virtualearth.net/tiles/a{q}.jpeg?g=1",
+}
+MINIMAP_DEFAULT_STYLE = "satellite"
+DETAILMAP_DEFAULT_STYLE = "satellite"
+
+# Map UI styles
+MAP_BUTTON_ACTIVE_STYLE = "background-color: #3498db; padding: 8px 15px; border-radius: 4px; color: white; margin-right: 10px;"
+MAP_BUTTON_INACTIVE_STYLE = "background-color: #34495e; padding: 8px 15px; border-radius: 4px; color: white; margin-right: 10px;"
+MAP_BACKGROUND_COLOR = "#282828"
+MAP_GRID_COLOR = "#aaaaaa"
+MAP_GRID_OPACITY = 100  # 0-255
 
 # Speedometer configuration
 SPEED_MIN = 0
