@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 This module provides basic testing functionality for Force Fusion components.
 It creates simple test windows for each widget with simulated data.
@@ -21,6 +20,7 @@ from PyQt5.QtWidgets import (
 # Imported config from force_fusion
 from force_fusion import config
 from force_fusion.widgets.attitude import AttitudeWidget
+from force_fusion.widgets.gg_diagram import GgDiagramWidget
 from force_fusion.widgets.heading import HeadingWidget
 from force_fusion.widgets.mapbox_view import MapboxView
 from force_fusion.widgets.minimap import MinimapWidget
@@ -107,6 +107,9 @@ class TestWindow(QMainWindow):
         self.test_data["pitch"] = 10 * math.sin(counter * 0.1)
         self.test_data["roll"] = 15 * math.cos(counter * 0.08)
 
+        # Add lateral acceleration values (for GG diagram)
+        self.test_data["lateral_acceleration"] = 2 * math.sin(counter * 0.07)
+
         # Update position based on heading and speed
         speed_ms = self.test_data["speed"] / 3.6  # km/h to m/s
         distance = speed_ms * 0.1  # distance in 100ms
@@ -188,6 +191,12 @@ class TestWindow(QMainWindow):
                 self.test_data["roll"],
             )
 
+        elif isinstance(self.widget, GgDiagramWidget):
+            # Convert m/s² to G (1G ≈ 9.81 m/s²)
+            longit_g = self.test_data["acceleration"] / 9.81
+            lateral_g = self.test_data["lateral_acceleration"] / 9.81
+            self.widget.setAccel(longit_g, lateral_g)
+
 
 def test_minimap():
     """Test the minimap widget."""
@@ -217,6 +226,14 @@ def test_heading():
     """Test the heading widget."""
     app = QApplication(sys.argv)
     window = TestWindow(HeadingWidget(), "Heading Widget")
+    window.show()
+    sys.exit(app.exec_())
+
+
+def test_gg_diagram():
+    """Test the GG diagram widget."""
+    app = QApplication(sys.argv)
+    window = TestWindow(GgDiagramWidget(), "GG Diagram Widget")
     window.show()
     sys.exit(app.exec_())
 
@@ -326,9 +343,20 @@ def test_mapbox():
 
 def test_all():
     """Test all widgets together (main dashboard)."""
-    from force_fusion.app import main
+    # Don't import main - this causes a circular dependency
+    app = QApplication(sys.argv)
 
-    main()
+    # Create the main window with all widgets
+    from force_fusion.controller import DashboardController
+    from force_fusion.sensors import SensorProvider
+    from force_fusion.ui_main_window import MainWindow
+
+    main_window = MainWindow()
+    sensor_provider = SensorProvider(data_source="simulated")
+    controller = DashboardController(main_window, sensor_provider)  # noqa: F841
+
+    main_window.show()
+    sys.exit(app.exec_())
 
 
 if __name__ == "__main__":
@@ -346,6 +374,8 @@ if __name__ == "__main__":
             test_tire_force()
         elif test_name == "mapbox":
             test_mapbox()
+        elif test_name == "gg_diagram":
+            test_gg_diagram()
         else:
             test_all()
     else:

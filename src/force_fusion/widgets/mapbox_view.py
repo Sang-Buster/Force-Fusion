@@ -98,11 +98,30 @@ class WebSocketServer:
         self.server = None
         self.running = False
 
+        # Ensure DEFAULT_CENTER is numeric
+        default_center = config.DEFAULT_CENTER
+        if isinstance(default_center, (list, tuple)) and len(default_center) >= 2:
+            # Convert to float if they're strings
+            lon = (
+                float(default_center[0])
+                if not isinstance(default_center[0], (int, float))
+                else default_center[0]
+            )
+            lat = (
+                float(default_center[1])
+                if not isinstance(default_center[1], (int, float))
+                else default_center[1]
+            )
+        else:
+            # Default values if config is invalid
+            lon, lat = -81.04897348153887, 29.18825368942673
+            print("Warning: Invalid DEFAULT_CENTER config, using default values")
+
         # Lon/Lat boundaries for random data generation
-        self.lon_min = config.DEFAULT_CENTER[0] - 0.01
-        self.lon_max = config.DEFAULT_CENTER[0] + 0.01
-        self.lat_min = config.DEFAULT_CENTER[1] - 0.01
-        self.lat_max = config.DEFAULT_CENTER[1] + 0.01
+        self.lon_min = lon - 0.01
+        self.lon_max = lon + 0.01
+        self.lat_min = lat - 0.01
+        self.lat_max = lat + 0.01
 
         # Initial position and orientation
         self.latitude = self.lat_min + (self.lat_max - self.lat_min) / 2
@@ -183,7 +202,7 @@ class WebSocketServer:
             self.pitch = max(-10, min(10, self.pitch + random.uniform(-0.5, 0.5)))
             self.roll = max(-10, min(10, self.roll + random.uniform(-0.5, 0.5)))
 
-            # Format data in the expected format for map_component.html
+            # Format data in the expected format for map.html
             data = {
                 "droneCoords": [[f"{self.longitude},{self.latitude},0"]],
                 "droneNames": [["Vehicle"]],
@@ -323,7 +342,11 @@ class MapboxView(QWidget):
                 pass
 
         # Get the path to the HTML file
-        html_path = os.path.join(os.path.dirname(__file__), "map_component.html")
+        CURRENT_DIR = os.path.abspath(os.path.dirname(__file__))  # widgets/
+        RESOURCE_DIR = os.path.abspath(
+            os.path.join(CURRENT_DIR, "..", "resources")
+        )  # force_fusion/resources
+        html_path = os.path.join(RESOURCE_DIR, "map.html")
 
         try:
             # Read the HTML content
@@ -359,7 +382,7 @@ class MapboxView(QWidget):
             self._layout.addWidget(self._web_view)
 
         except Exception as e:
-            print(f"Error loading map_component.html: {e}")
+            print(f"Error loading map.html: {e}")
             self._setup_placeholder(f"Error loading map: {e}")
 
     def _check_webgl_initialization(self, success):
