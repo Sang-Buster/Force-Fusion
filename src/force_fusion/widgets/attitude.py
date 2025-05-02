@@ -297,8 +297,8 @@ class AttitudeWidget(QWidget):
         painter.translate(center_x, car_center_y)
         painter.rotate(self._roll)
 
-        # Calculate icon size (30% of radius)
-        icon_size = int(radius * 0.3)
+        # Calculate icon size (25% of radius instead of 30% to make it smaller)
+        icon_size = int(radius * 0.25)
 
         # Draw horizontal reference line through the car to show tilt
         # Make the line longer (1.5x the icon size) and more visible
