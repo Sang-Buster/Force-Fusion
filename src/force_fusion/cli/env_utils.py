@@ -218,37 +218,108 @@ class ConfigManager:
     def _get_config_comment(self, key: str) -> str:
         """Get the comment for a config variable from the config.py file."""
         # This is a simple implementation; for better comments, you could parse the config.py file
-        if key == "MAPBOX_TOKEN":
-            return "Your Mapbox API token"
-        elif key == "GPS_UPDATE_INTERVAL":
-            return "GPS update interval in milliseconds"
-        elif key == "SPEED_UPDATE_INTERVAL":
-            return "Speed update interval in milliseconds"
-        elif key == "GG_DIAGRAM_MIN_G":
-            return "Minimum G force to display in GG diagram"
-        elif key == "GG_DIAGRAM_MAX_G":
-            return "Maximum G force to display in GG diagram"
-        # Map configuration comments
-        elif key == "TILE_SIZE":
-            return "Standard map tile size in pixels"
-        elif key == "MAP_TILE_URLS":
-            return "URLs for different map tile styles"
-        elif key == "MINIMAP_DEFAULT_STYLE":
-            return "Default map style for minimap (satellite or street)"
+        if key == "ACCEL_COLOR_NEGATIVE":
+            return "Color for negative acceleration display (red)"
+        elif key == "ACCEL_COLOR_POSITIVE":
+            return "Color for positive acceleration display (green)"
+        elif key == "ACCEL_MAX":
+            return "Maximum acceleration value in m/s² for displays"
+        elif key == "ACCEL_MIN":
+            return "Minimum acceleration value in m/s² for displays"
+        elif key == "ACCENT_COLOR":
+            return "Primary accent color for the UI (blue)"
+        elif key == "ATTITUDE_UPDATE_INTERVAL":
+            return "Update interval in milliseconds for attitude displays"
+        elif key == "BACKGROUND_COLOR":
+            return "Main application background color (dark gray)"
+        elif key == "BEZEL_BORDER_COLOR":
+            return "Border color for instrument bezels (darker gray)"
+        elif key == "BEZEL_COLOR":
+            return "Background color for instrument bezels (medium gray)"
+        elif key == "DANGER_COLOR":
+            return "Color used for dangerous or critical values (red)"
+        elif key == "DEFAULT_CENTER":
+            return "Default map center coordinates (longitude,latitude) - Kennedy Space Center area"
+        elif key == "DEFAULT_ZOOM":
+            return "Default zoom level for maps (1-19, higher means more zoomed in)"
         elif key == "DETAILMAP_DEFAULT_STYLE":
             return "Default map style for detailed map view (satellite or street)"
+        elif key == "GG_DIAGRAM_MAX_G":
+            return "Maximum G force to display in GG diagram (lateral/longitudinal acceleration)"
+        elif key == "GG_DIAGRAM_MIN_G":
+            return "Minimum G force to display in GG diagram (lateral/longitudinal acceleration)"
+        elif key == "GG_DIAGRAM_UPDATE_INTERVAL":
+            return "Update interval in milliseconds for GG diagram"
+        elif key == "GPS_UPDATE_INTERVAL":
+            return "GPS update interval in milliseconds"
+        elif key == "HEADING_COLOR":
+            return "Color for heading indicator (red)"
+        elif key == "MAPBOX_TOKEN":
+            return "Your Mapbox API token for map services"
+        elif key == "MAP_BACKGROUND_COLOR":
+            return "Background color for map displays (dark gray)"
         elif key == "MAP_BUTTON_ACTIVE_STYLE":
             return "CSS style for active map style button"
         elif key == "MAP_BUTTON_INACTIVE_STYLE":
             return "CSS style for inactive map style button"
-        elif key == "MAP_BACKGROUND_COLOR":
-            return "Background color for map displays"
         elif key == "MAP_GRID_COLOR":
-            return "Grid line color for map overlays"
+            return "Grid line color for map overlays (light gray)"
         elif key == "MAP_GRID_OPACITY":
             return "Opacity value (0-255) for map grid overlay"
+        elif key == "MAP_TILE_URLS":
+            return "URLs for different map tile styles (OpenStreetMap for street, Bing Maps for satellite)"
+        elif key == "MAP_UPDATE_INTERVAL":
+            return "Update interval in milliseconds for maps"
+        elif key == "MINIMAP_DEFAULT_STYLE":
+            return "Default map style for minimap (satellite or street)"
+        elif key == "PITCH_MAX":
+            return "Maximum pitch angle in degrees"
+        elif key == "PITCH_MIN":
+            return "Minimum pitch angle in degrees"
+        elif key == "PITCH_POINTER_COLOR":
+            return "Color for pitch indicator pointer (amber)"
+        elif key == "ROLL_MAX":
+            return "Maximum roll angle in degrees"
+        elif key == "ROLL_MIN":
+            return "Minimum roll angle in degrees"
+        elif key == "ROLL_POINTER_COLOR":
+            return "Color for roll indicator pointer (cyan)"
+        elif key == "SPEED_COLOR":
+            return "Color for speed display (green)"
+        elif key == "SPEED_MAX":
+            return "Maximum speed value in display units (likely mph or km/h)"
+        elif key == "SPEED_MIN":
+            return "Minimum speed value in display units"
+        elif key == "SPEED_UPDATE_INTERVAL":
+            return "Speed update interval in milliseconds"
+        elif key == "SUCCESS_COLOR":
+            return "Color used for success indicators (green)"
+        elif key == "TEXT_COLOR":
+            return "Default text color (off-white)"
+        elif key == "TILE_SIZE":
+            return "Standard map tile size in pixels"
+        elif key == "TIRE_FORCE_COLOR_HIGH":
+            return "Color for high tire force values (red)"
+        elif key == "TIRE_FORCE_COLOR_LIME":
+            return "Color for lime tier tire force values (bright lime)"
+        elif key == "TIRE_FORCE_COLOR_LOW":
+            return "Color for low tire force values (green)"
+        elif key == "TIRE_FORCE_COLOR_NORMAL":
+            return "Color for normal tire force values (yellow)"
+        elif key == "TIRE_FORCE_COLOR_ORANGE":
+            return "Color for orange tier tire force values (orange)"
+        elif key == "TIRE_FORCE_MAX":
+            return "Maximum tire force value in Newtons"
+        elif key == "TIRE_FORCE_MIN":
+            return "Minimum tire force value in Newtons"
+        elif key == "TIRE_FORCE_NORMAL":
+            return "Normal/reference tire force value in Newtons"
+        elif key == "TIRE_FORCE_UPDATE_INTERVAL":
+            return "Update interval in milliseconds for tire force display"
         elif key == "TRAJECTORY_LINE_WIDTH":
-            return "Width of trajectory lines on maps"
+            return "Width of trajectory lines on maps in pixels"
+        elif key == "WARNING_COLOR":
+            return "Color used for warning indicators (yellow)"
         # Add more comments as needed
         return ""
 
