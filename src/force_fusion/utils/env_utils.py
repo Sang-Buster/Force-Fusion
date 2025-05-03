@@ -236,10 +236,16 @@ class ConfigManager:
             return "Border color for instrument bezels (darker gray)"
         elif key == "BEZEL_COLOR":
             return "Background color for instrument bezels (medium gray)"
+        elif key == "CSV_PATH":
+            return "Path for storing received vehicle data CSV file"
         elif key == "DANGER_COLOR":
             return "Color used for dangerous or critical values (red)"
+        elif key == "DEBUG_MODE":
+            return "Enable for development and debugging mode"
         elif key == "DEFAULT_CENTER":
             return "Default map center coordinates (longitude,latitude) - Kennedy Space Center area"
+        elif key == "DEFAULT_DATA_SOURCE":
+            return "Default data source for vehicle data (simulated or websocket)"
         elif key == "DEFAULT_ZOOM":
             return "Default zoom level for maps (1-19, higher means more zoomed in)"
         elif key == "DETAILMAP_DEFAULT_STYLE":
@@ -320,6 +326,14 @@ class ConfigManager:
             return "Width of trajectory lines on maps in pixels"
         elif key == "WARNING_COLOR":
             return "Color used for warning indicators (yellow)"
+        elif key == "WS_HOST":
+            return "Hostname for WebSocket server"
+        elif key == "WS_PORT":
+            return "Port for WebSocket server"
+        elif key == "WS_RECONNECT_INTERVAL":
+            return "Milliseconds between reconnection attempts for WebSocket"
+        elif key == "WS_URI":
+            return "Full WebSocket URI (usually ws://hostname:port)"
         # Add more comments as needed
         return ""
 

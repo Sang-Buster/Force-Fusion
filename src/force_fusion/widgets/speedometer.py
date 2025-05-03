@@ -33,6 +33,8 @@ class SpeedometerWidget(QWidget):
         # Current values
         self._speed = 0.0  # mi/h (changed from km/h)
         self._acceleration = 0.0  # m/s²
+        self._ax = 0.0  # Longitudinal acceleration
+        self._ay = 0.0  # Lateral acceleration
 
         # Cached calculated values
         self._speed_angle = 0.0
@@ -66,14 +68,22 @@ class SpeedometerWidget(QWidget):
         self._recalculate()
         self.update()
 
-    def update_acceleration(self, acceleration):
+    def update_acceleration(self, ax, ay=None):
         """
         Update the acceleration value.
 
         Args:
-            acceleration: Acceleration in m/s²
+            ax: Longitudinal acceleration in m/s²
+            ay: Lateral acceleration in m/s² (optional)
         """
-        self._acceleration = acceleration
+        self._ax = ax
+        if ay is not None:
+            self._ay = ay
+            # Calculate combined acceleration vector magnitude
+            self._acceleration = math.sqrt(ax * ax + ay * ay)
+        else:
+            # Keep backward compatibility - just use ax
+            self._acceleration = ax
         self.update()
 
     def _recalculate(self):
@@ -287,7 +297,6 @@ class SpeedometerWidget(QWidget):
         # --- Acceleration ---
         # Convert acceleration from m/s² to G units (1G = 9.81 m/s²)
         accel_g = self._acceleration / 9.81
-        accel_text = f"{accel_g:.2f} G"  # Display G-force
 
         # Set up font for acceleration
         accel_font = QFont("Arial", 10)
@@ -321,7 +330,8 @@ class SpeedometerWidget(QWidget):
         )
         painter.setFont(accel_font)
         painter.setPen(QColor(config.TEXT_COLOR))
-        painter.drawText(accel_rect, Qt.AlignCenter, accel_text)
+        combined_text = f"{accel_g:.2f} G"
+        painter.drawText(accel_rect, Qt.AlignCenter, combined_text)
 
     def _draw_acceleration_bar(self, painter, center_x, center_y, radius):
         """Draw the acceleration indicator bar using m/s²."""

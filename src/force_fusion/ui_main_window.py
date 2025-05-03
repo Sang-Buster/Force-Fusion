@@ -4,12 +4,14 @@ Main window UI definition for Force-Fusion dashboard.
 
 from PyQt5.QtCore import QSize, Qt
 from PyQt5.QtWidgets import (
+    QComboBox,
     QFrame,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QMainWindow,
     QSizePolicy,
+    QStatusBar,
     QVBoxLayout,
     QWidget,
 )
@@ -41,6 +43,47 @@ class Ui_MainWindow:
         self.mainLayout.setContentsMargins(10, 5, 10, 10)
         self.mainLayout.setSpacing(5)
 
+        # Data Source Selector
+        self.dataSourceFrame = QFrame()
+        self.dataSourceLayout = QHBoxLayout(self.dataSourceFrame)
+        self.dataSourceLayout.setContentsMargins(0, 0, 0, 5)
+
+        # Data Source Label
+        self.dataSourceLabel = QLabel("Data Source:")
+        self.dataSourceLabel.setStyleSheet(
+            f"color: {config.TEXT_COLOR}; font-weight: bold;"
+        )
+
+        # Data Source Selector ComboBox
+        self.dataSourceComboBox = QComboBox()
+        self.dataSourceComboBox.addItem("Simulated Data", "simulated")
+        self.dataSourceComboBox.addItem("WebSocket", "websocket")
+
+        # Set default selection
+        index = self.dataSourceComboBox.findData(config.DEFAULT_DATA_SOURCE)
+        if index >= 0:
+            self.dataSourceComboBox.setCurrentIndex(index)
+
+        # Connection Status Label
+        self.connectionStatusLabel = QLabel("Connection: ")
+        self.connectionStatusLabel.setStyleSheet(
+            f"color: {config.TEXT_COLOR}; font-weight: bold;"
+        )
+
+        self.connectionStatusValue = QLabel("Inactive")
+        self.connectionStatusValue.setStyleSheet(f"color: {config.WARNING_COLOR};")
+
+        # Add widgets to data source layout
+        self.dataSourceLayout.addWidget(self.dataSourceLabel)
+        self.dataSourceLayout.addWidget(self.dataSourceComboBox)
+        self.dataSourceLayout.addSpacing(20)
+        self.dataSourceLayout.addWidget(self.connectionStatusLabel)
+        self.dataSourceLayout.addWidget(self.connectionStatusValue)
+        self.dataSourceLayout.addStretch(1)
+
+        # Add data source frame to main layout
+        self.mainLayout.addWidget(self.dataSourceFrame)
+
         # Top section - Horizontal layout for circular widgets
         self.topFrame = QFrame()
         self.topFrame.setFrameShape(QFrame.StyledPanel)
@@ -71,6 +114,11 @@ class Ui_MainWindow:
         # Add frames to main layout
         self.mainLayout.addWidget(self.topFrame, 2)
         self.mainLayout.addWidget(self.bottomFrame, 3)
+
+        # Status bar for additional information
+        self.statusBar = QStatusBar(MainWindow)
+        MainWindow.setStatusBar(self.statusBar)
+        self.statusBar.showMessage("Force-Fusion Dashboard Ready")
 
         # Reduce spacing and margins for more compact layout
         self.mainLayout.setContentsMargins(10, 5, 10, 10)
@@ -189,6 +237,16 @@ class Ui_MainWindow:
         ]:
             frame.setStyleSheet("border: none;")
 
+        # Style the status bar
+        self.statusBar.setStyleSheet(
+            f"background-color: {config.BACKGROUND_COLOR}; color: {config.TEXT_COLOR};"
+        )
+
+        # Style the data source selector
+        self.dataSourceComboBox.setStyleSheet(
+            f"background-color: {config.BEZEL_COLOR}; color: {config.TEXT_COLOR}; padding: 3px;"
+        )
+
 
 class MainWindow(QMainWindow):
     """Main application window containing all dashboard widgets."""
@@ -211,3 +269,52 @@ class MainWindow(QMainWindow):
             "RR": self.ui.tireForceRearRight,
         }
         self.mapbox = self.ui.mapboxView
+        self.data_source_selector = self.ui.dataSourceComboBox
+        self.connection_status_label = self.ui.connectionStatusValue
+        self.status_bar = self.ui.statusBar
+
+    def update_connection_status(self, status, message=""):
+        """Update the connection status display."""
+        self.connection_status_label.setText(status)
+
+        # Set color based on status
+        if status == "Active":
+            self.connection_status_label.setStyleSheet(
+                f"color: {config.SUCCESS_COLOR};"
+            )
+            # Update the status bar when connection is active
+            if message and "WebSocket" in message:
+                self.status_bar.showMessage("WebSocket Connected")
+            elif message:
+                self.status_bar.showMessage(message)
+        elif status == "Connecting" or status == "Reconnecting":
+            self.connection_status_label.setStyleSheet(
+                f"color: {config.WARNING_COLOR};"
+            )
+            # Update status bar when connecting
+            self.status_bar.showMessage(
+                f"Connecting to {message} - Run 'python src/force_fusion/utils/websocket_client_test.py' to send test data"
+            )
+        elif status == "Inactive":
+            self.connection_status_label.setStyleSheet(f"color: {config.TEXT_COLOR};")
+            # Update status bar when inactive
+            self.status_bar.showMessage(
+                "Connection Inactive - Run 'python src/force_fusion/utils/websocket_client_test.py' to send test data"
+            )
+        elif status == "Error":
+            self.connection_status_label.setStyleSheet(f"color: {config.DANGER_COLOR};")
+            # Update status bar with error message
+            self.status_bar.showMessage(f"Error: {message}")
+
+        # Always show message in status bar if provided
+        if message:
+            if (
+                status == "Connecting"
+                or status == "Reconnecting"
+                or status == "Inactive"
+            ):
+                self.status_bar.showMessage(
+                    f"{message} - Run 'python src/force_fusion/utils/websocket_client_test.py' to send test data"
+                )
+            else:
+                self.status_bar.showMessage(message)

@@ -67,7 +67,7 @@ class MapboxView(QWidget):
         )
         self._status_panel.setText("Loading map...")
         self._status_panel.setAlignment(Qt.AlignCenter)
-        self._status_panel.setFixedHeight(80)  # Fixed height for status panel
+        self._status_panel.setFixedHeight(50)  # Fixed height for status panel
 
         # Check if the token is set
         if config.MAPBOX_TOKEN == "YOUR_MAPBOX_TOKEN_HERE":
@@ -114,23 +114,16 @@ class MapboxView(QWidget):
         seconds = int(elapsed_secs % 60)
         elapsed = f"{hours:02d}:{minutes:02d}:{seconds:02d}"
 
-        # Calculate update rate
-        updates_per_sec = "1Hz"
-
-        # Update status text
+        # Update status text - removed connection status since it's already shown in the top corner
         status_html = f"""
         <table width="100%">
             <tr>
-                <td width="50%"><b>Connection:</b> <span style="color: #4CAF50">Active</span></td>
+                <td width="50%"><b>Position:</b> {self._current_lat:.6f}, {self._current_lon:.6f}</td>
                 <td width="50%"><b>Time:</b> {time_now}</td>
             </tr>
             <tr>
-                <td><b>Position:</b> {self._current_lat:.6f}, {self._current_lon:.6f}</td>
-                <td><b>Elapsed:</b> {elapsed}</td>
-            </tr>
-            <tr>
                 <td><b>Heading:</b> {self._current_heading:.1f}°</td>
-                <td><b>Update Rate:</b> {updates_per_sec}</td>
+                <td><b>Elapsed:</b> {elapsed}</td>
             </tr>
         </table>
         """

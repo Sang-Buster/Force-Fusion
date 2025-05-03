@@ -66,6 +66,9 @@ class GgDiagramWidget(QWidget):
         self._latest_ay = 0.0
         self._needs_update = False
 
+        # Debug flag
+        self._debug = False
+
         # Start the update timer
         self._update_timer.start(config.GG_DIAGRAM_UPDATE_INTERVAL)
 

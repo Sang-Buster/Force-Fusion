@@ -3,14 +3,26 @@ Configuration settings for Force-Fusion dashboard.
 Contains constants for display ranges, units, update intervals, and styling.
 """
 
-# Sensor update intervals (milliseconds)
-GPS_UPDATE_INTERVAL = 1000
-SPEED_UPDATE_INTERVAL = 100
-ATTITUDE_UPDATE_INTERVAL = 100
-TIRE_FORCE_UPDATE_INTERVAL = 100
-MAP_UPDATE_INTERVAL = 100
-GG_DIAGRAM_UPDATE_INTERVAL = 100
+# Debug settings
+DEBUG_MODE = False  # Enable for development and debugging
 
+# Sensor update intervals (milliseconds)
+GPS_UPDATE_INTERVAL = 20  # Faster update
+SPEED_UPDATE_INTERVAL = 20  # Faster update
+ATTITUDE_UPDATE_INTERVAL = 20  # Faster update
+TIRE_FORCE_UPDATE_INTERVAL = 20  # Faster update
+MAP_UPDATE_INTERVAL = 20  # Faster update
+GG_DIAGRAM_UPDATE_INTERVAL = 20  # Faster update
+
+# Data source configuration
+DEFAULT_DATA_SOURCE = "websocket"  # Options: "simulated", "websocket"
+
+# WebSocket configuration
+WS_HOST = "localhost"  # Hostname for WebSocket server
+WS_PORT = 8765  # Port for WebSocket server
+WS_URI = f"ws://{WS_HOST}:{WS_PORT}"  # Full WebSocket URI
+WS_RECONNECT_INTERVAL = 1000  # Milliseconds between reconnection attempts (1 second)
+CSV_PATH = "data/vehicle_data.csv"  # Path for storing received data
 
 # Mapbox configuration
 # Replace with your actual token when using the application

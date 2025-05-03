@@ -81,7 +81,9 @@ force-fusion --help
    ```
    - You can get a `MAPBOX_TOKEN` by signing up at https://www.mapbox.com/
    - Update the `CSV_PATH` if you want to use a custom database file
+   - Update the `WS_HOST` if you want to use a custom websocket host
    - Update the `WS_PORT` if you want to use a custom websocket port
+   - Update the `WS_RECONNECT_INTERVAL` if you want to use a custom websocket reconnect interval
    - Modify more variables in `.env` as needed
 
 7. **Install ruff and pre-commit:**

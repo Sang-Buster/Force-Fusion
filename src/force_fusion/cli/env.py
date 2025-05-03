@@ -6,7 +6,7 @@ import argparse
 import os
 import sys
 
-from force_fusion.cli.env_utils import config_manager
+from force_fusion.utils.env_utils import config_manager
 
 
 def run_env_command(args):

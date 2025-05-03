@@ -7,7 +7,7 @@ import math
 import os
 from threading import Lock
 
-from PyQt5.QtCore import QObject, QRectF, Qt, QTimer, QUrl, pyqtSignal
+from PyQt5.QtCore import QDateTime, QObject, QRectF, Qt, QTimer, QUrl, pyqtSignal
 from PyQt5.QtGui import (
     QColor,
     QFont,
@@ -54,6 +54,9 @@ class TileManager(QObject):
         self.cache = {}  # Cache for loaded tiles
         self.pending_requests = {}
         self.cache_lock = Lock()
+
+        # Configure network manager
+        self.network_manager.setNetworkAccessible(QNetworkAccessManager.Accessible)
 
         # Set up tile URLs from config
         self.tile_urls = config.MAP_TILE_URLS
@@ -155,6 +158,10 @@ class TileManager(QObject):
     def _request_tile(self, zoom, x, y, tile_key):
         """Request a tile from the server."""
         try:
+            # Check if this tile is already being requested
+            if tile_key in self.pending_requests:
+                return
+
             # Process URL template based on style
             url_template = self.current_url_template
 
@@ -168,10 +175,19 @@ class TileManager(QObject):
 
             request = QNetworkRequest(QUrl(url))
 
+            # Set request priority to high for faster loading
+            request.setPriority(QNetworkRequest.HighPriority)
+
             # Add proper headers
             request.setRawHeader(b"User-Agent", b"Force-Fusion/1.0")
             request.setRawHeader(b"Accept", b"image/*")
 
+            # Set a timeout to prevent stalled requests
+            request.setAttribute(
+                QNetworkRequest.CacheLoadControlAttribute, QNetworkRequest.PreferCache
+            )
+
+            # Make the request
             reply = self.network_manager.get(request)
 
             # Store the reply and connect to its signals
@@ -181,6 +197,8 @@ class TileManager(QObject):
             )
         except Exception as e:
             logger.error(f"Error requesting tile: {e}")
+            # Use placeholder for this tile when request fails
+            self._use_placeholder(zoom, x, y, tile_key)
 
     def _use_placeholder(self, zoom, x, y, tile_key):
         """Set placeholder image for a tile and emit signal."""
@@ -215,9 +233,17 @@ class TileManager(QObject):
                 else:
                     logger.warning(f"Invalid image received for tile {zoom}/{x}/{y}")
                     self._use_placeholder(zoom, x, y, tile_key)
+                    # Schedule a retry after a delay
+                    QTimer.singleShot(
+                        2000, lambda: self._retry_tile_request(zoom, x, y, tile_key)
+                    )
             else:
                 logger.warning(f"Error downloading tile: {reply.errorString()}")
                 self._use_placeholder(zoom, x, y, tile_key)
+                # Schedule a retry after a delay
+                QTimer.singleShot(
+                    2000, lambda: self._retry_tile_request(zoom, x, y, tile_key)
+                )
 
             # Clean up
             if tile_key in self.pending_requests:
@@ -227,6 +253,30 @@ class TileManager(QObject):
         except Exception as e:
             logger.error(f"Error handling tile response: {e}")
             self._use_placeholder(zoom, x, y, tile_key)
+            # Schedule a retry after a delay
+            QTimer.singleShot(
+                2000, lambda: self._retry_tile_request(zoom, x, y, tile_key)
+            )
+
+    def _retry_tile_request(self, zoom, x, y, tile_key):
+        """Retry loading a tile after a failure."""
+        try:
+            # Only retry if we don't already have this tile in cache
+            with self.cache_lock:
+                if (
+                    tile_key in self.cache
+                    and self.cache[tile_key] != self.placeholder_image
+                ):
+                    return
+
+            # And if it's not already being requested
+            if tile_key in self.pending_requests:
+                return
+
+            # Request the tile again
+            self._request_tile(zoom, x, y, tile_key)
+        except Exception as e:
+            logger.error(f"Error retrying tile request: {e}")
 
 
 class DetailMapView(QDialog):
@@ -250,6 +300,9 @@ class DetailMapView(QDialog):
         # Flag to control position updates
         self._follow_vehicle = True  # Start by following the vehicle
 
+        # Tile loading flag
+        self._tiles_loaded = False
+
         # Set up dialog
         self.setWindowTitle("Detailed Map View")
         self.setMinimumSize(800, 600)
@@ -261,7 +314,7 @@ class DetailMapView(QDialog):
         # Set map settings
         self.zoom = config.DEFAULT_ZOOM
         self.tile_manager = TileManager(self)
-        self.tile_manager.tileLoaded.connect(self.update)
+        self.tile_manager.tileLoaded.connect(self._on_tile_loaded)
 
         # Set initial style
         self.map_style = config.DETAILMAP_DEFAULT_STYLE
@@ -278,6 +331,11 @@ class DetailMapView(QDialog):
         self._update_timer.timeout.connect(self._update_from_parent)
         self._update_timer.start(config.MAP_UPDATE_INTERVAL)
 
+        # Tile loading check timer
+        self._tile_load_timer = QTimer(self)
+        self._tile_load_timer.setSingleShot(True)
+        self._tile_load_timer.timeout.connect(self.update)
+
         # Update coordinates display
         self._update_status_bar()
 
@@ -287,6 +345,13 @@ class DetailMapView(QDialog):
             int((screen_rect.width() - self.width()) / 2),
             int((screen_rect.height() - self.height()) / 2),
         )
+
+    def _on_tile_loaded(self, zoom, x, y, image):
+        """Handle a tile that has finished loading."""
+        # Only update if the zoom level still matches our current zoom
+        if zoom == self.zoom:
+            self._tiles_loaded = True
+            self.update()  # Trigger a repaint to show the new tile
 
     def _create_ui(self):
         """Create and set up the UI components."""
@@ -455,6 +520,12 @@ class DetailMapView(QDialog):
 
         # If zoom level changed, recalculate center to keep cursor position fixed
         if old_zoom != self.zoom:
+            # Prefetch tiles for the new zoom level
+            self._prefetch_tiles_for_zoom(cursor_lat, cursor_lon)
+
+            # Reset tile loading flag
+            self._tiles_loaded = False
+
             # Calculate new tile coordinates after zoom
             new_cursor_tile_x, new_cursor_tile_y = geo_to_tile(
                 cursor_lat, cursor_lon, self.zoom
@@ -480,8 +551,27 @@ class DetailMapView(QDialog):
             # Update the status bar
             self._update_status_bar()
 
+            # Schedule additional update to load more tiles
+            self._tile_load_timer.start(100)
+
             # Redraw the map
             self.update()
+
+    def _prefetch_tiles_for_zoom(self, lat, lon):
+        """Prefetch tiles for the new zoom level around the specified position."""
+        try:
+            # Calculate the visible tile range at the new zoom level
+            tiles = get_visible_tiles(
+                lat, lon, self.zoom, self.map_widget.width(), self.map_widget.height()
+            )
+
+            # Request each tile (will get from cache if already loaded)
+            for tile_info in tiles:
+                tile_zoom, tile_x, tile_y, _, _ = tile_info
+                # This will queue a network request if the tile isn't cached
+                self.tile_manager.get_tile(tile_zoom, tile_x, tile_y)
+        except Exception as e:
+            logger.error(f"Error prefetching tiles: {e}")
 
     def set_map_style(self, style):
         """Switch to the specified map style"""
@@ -577,6 +667,9 @@ class DetailMapView(QDialog):
             self.latitude, self.longitude, self.zoom, width, height
         )
 
+        # Check if we need to trigger a repaint for loading tiles
+        trigger_update = False
+
         # Draw tiles
         for tile_info in tiles:
             tile_zoom, tile_x, tile_y, screen_x, screen_y = tile_info
@@ -588,9 +681,18 @@ class DetailMapView(QDialog):
             # Try to get tile from cache
             tile_image = self.tile_manager.get_tile(tile_zoom, tile_x, tile_y)
 
+            # If we got a placeholder, mark for update later
+            if tile_image == self.tile_manager.placeholder_image:
+                trigger_update = True
+
             if tile_image and not tile_image.isNull():
                 # Draw tile at specified position
                 painter.drawImage(int(screen_x), int(screen_y), tile_image)
+
+        # If any tiles are still loading, schedule an update to check if they're ready
+        if trigger_update and not self._tile_load_timer.isActive():
+            # Use a timer to trigger an update after a short delay
+            self._tile_load_timer.start(100)
 
     def _draw_trajectory(self, painter, width, height):
         """Draw the vehicle trajectory path."""
@@ -752,10 +854,25 @@ class MinimapWidget(QWidget):
         self._center_on_vehicle = True
         self._auto_zoom = True  # Auto-adjust zoom to fit trajectory
 
+        # Zoom stability parameters
+        self._last_zoom_change_time = 0
+        self._zoom_change_cooldown_ms = 1000  # Min milliseconds between zoom changes
+        self._min_zoom_change = (
+            1  # Only change zoom if difference is at least this much
+        )
+
         # Cached data for efficient rendering
         self._centerx = 0
         self._centery = 0
         self._radius = 0
+
+        # Flag to track if we've loaded at least one good set of tiles
+        self._tiles_loaded = False
+
+        # Tile preloading timer
+        self._tile_load_timer = QTimer(self)
+        self._tile_load_timer.setSingleShot(True)
+        self._tile_load_timer.timeout.connect(self.update)
 
         # Set widget properties
         self.setMinimumSize(200, 200)
@@ -770,13 +887,20 @@ class MinimapWidget(QWidget):
         # Create tile manager for map tiles - always satellite for the minimap
         self._tile_manager = TileManager(self)
         self._tile_manager.set_style(config.MINIMAP_DEFAULT_STYLE)
-        self._tile_manager.tileLoaded.connect(self.update)
+        self._tile_manager.tileLoaded.connect(self._on_tile_loaded)
 
         # Set up cursor to indicate it's clickable
         self.setCursor(Qt.PointingHandCursor)
 
         # Detailed map dialog (created when needed)
         self._detail_dialog = None
+
+    def _on_tile_loaded(self, zoom, x, y, image):
+        """Handle a tile that has finished loading."""
+        # Only update if the zoom level still matches our current zoom
+        if zoom == self._zoom:
+            self._tiles_loaded = True
+            self.update()  # Trigger a repaint to show the new tile
 
     def update_position(self, latitude, longitude, heading=None):
         """Update the current position and add it to the trajectory."""
@@ -817,6 +941,11 @@ class MinimapWidget(QWidget):
         """Calculate optimal zoom level to fit the entire trajectory."""
         if not self._trajectory or len(self._trajectory) < 2:
             return
+
+        # Check if we're in the cooldown period for zoom changes
+        current_time = QDateTime.currentMSecsSinceEpoch()
+        if current_time - self._last_zoom_change_time < self._zoom_change_cooldown_ms:
+            return  # Skip this adjustment
 
         # Find the bounding box of the trajectory
         min_lat = max_lat = self._trajectory[0][0]
@@ -859,6 +988,9 @@ class MinimapWidget(QWidget):
             min(self.width(), self.height()) * 0.8
         )  # 80% of the size to account for padding
 
+        # Find the best zoom level
+        best_zoom = None
+
         # Calculate the zoom level needed to fit both lat and lon spans
         # We need to find the zoom level where the entire trajectory fits within our viewport
         for zoom in range(19, 0, -1):  # Start from max zoom and decrease
@@ -879,25 +1011,54 @@ class MinimapWidget(QWidget):
 
             # If the trajectory fits within our viewport at this zoom level, use it
             if max_pixels <= viewport_size:
-                self._zoom = zoom
-
-                # If we're not centering on the vehicle, update the center position
-                if not self._center_on_vehicle:
-                    self._latitude = center_lat
-                    self._longitude = center_lon
-
+                best_zoom = zoom
                 break
 
         # Set a reasonable minimum zoom
-        self._zoom = max(self._zoom, 10)
+        if best_zoom is None:
+            best_zoom = 10
+        best_zoom = max(best_zoom, 10)
 
-    def toggle_auto_zoom(self):
-        """Toggle automatic zoom adjustment."""
-        self._auto_zoom = not self._auto_zoom
-        if self._auto_zoom:
-            self._adjust_zoom_to_fit_trajectory()
+        # Only change the zoom if it's different enough from the current zoom
+        if abs(best_zoom - self._zoom) >= self._min_zoom_change:
+            # Pre-fetch tiles at the new zoom level before actually changing the zoom
+            self._prefetch_tiles_for_zoom(best_zoom, center_lat, center_lon)
+
+            # Update the zoom level
+            self._zoom = best_zoom
+
+            # Record the time of the zoom change
+            self._last_zoom_change_time = current_time
+
+            # If we're not centering on the vehicle, update the center position
+            if not self._center_on_vehicle:
+                self._latitude = center_lat
+                self._longitude = center_lon
+
+            # Reset the tile loading flag since we're changing zoom
+            self._tiles_loaded = False
+
+            # Update now but also schedule another update in a short time to load more tiles
             self.update()
-        return self._auto_zoom
+            self._tile_load_timer.start(100)  # Check for more tiles in 100ms
+
+    def _prefetch_tiles_for_zoom(self, zoom, center_lat, center_lon):
+        """Pre-fetch tiles for a new zoom level before switching to it."""
+        # Calculate the visible tile range at the new zoom level
+        if self.width() > 0 and self.height() > 0:
+            diameter = min(self.width(), self.height())
+            radius = diameter // 2 - 10
+
+            # Get visible tiles using the center lat/lon
+            tiles = get_visible_tiles(
+                center_lat, center_lon, zoom, radius * 2, radius * 2
+            )
+
+            # Request each tile (will get from cache if already loaded)
+            for tile_info in tiles:
+                tile_zoom, tile_x, tile_y, _, _ = tile_info
+                # This will queue a network request if the tile isn't cached
+                self._tile_manager.get_tile(tile_zoom, tile_x, tile_y)
 
     def _calculate_heading(self):
         """Calculate heading from the current and previous positions."""
@@ -1030,25 +1191,63 @@ class MinimapWidget(QWidget):
 
         # Calculate visible tile range based on current position
         if self._latitude != 0 and self._longitude != 0:
-            # Get visible tiles (using common utility)
+            # To ensure complete coverage with a circular view, we need to
+            # expand the area slightly to cover all tiles that might be visible
+            extended_radius = radius * 1.5  # Extend the radius to ensure full coverage
+
+            # Get visible tiles for a wider area (using common utility)
             tiles = get_visible_tiles(
-                self._latitude, self._longitude, self._zoom, radius * 2, radius * 2
+                self._latitude,
+                self._longitude,
+                self._zoom,
+                extended_radius * 2,
+                extended_radius * 2,
+            )
+
+            # Check if we need to trigger a repaint for loading tiles
+            tile_count = len(tiles)
+            loaded_count = 0
+
+            # Sort tiles by distance from center for better visual loading
+            center_tile_x, center_tile_y = geo_to_tile(
+                self._latitude, self._longitude, self._zoom
+            )
+            sorted_tiles = sorted(
+                tiles,
+                key=lambda t: (
+                    (t[1] - center_tile_x) ** 2 + (t[2] - center_tile_y) ** 2
+                ),
             )
 
             # Draw tiles
-            for tile_info in tiles:
+            for tile_info in sorted_tiles:
                 tile_zoom, tile_x, tile_y, screen_x, screen_y = tile_info
 
                 # Adjust to center of circle
-                adjusted_x = center_x - radius + screen_x
-                adjusted_y = center_y - radius + screen_y
+                adjusted_x = center_x - extended_radius + screen_x
+                adjusted_y = center_y - extended_radius + screen_y
 
                 # Get the tile
                 tile_image = self._tile_manager.get_tile(tile_zoom, tile_x, tile_y)
 
+                if tile_image != self._tile_manager.placeholder_image:
+                    loaded_count += 1
+
                 if tile_image and not tile_image.isNull():
                     # Draw tile
                     painter.drawImage(int(adjusted_x), int(adjusted_y), tile_image)
+
+            # Force immediate loading of missing tiles
+            if loaded_count < tile_count:
+                # If less than 80% of tiles loaded, schedule a quicker update
+                if loaded_count < tile_count * 0.8:
+                    self._tile_load_timer.start(50)  # Very quick update
+                else:
+                    self._tile_load_timer.start(100)  # Slightly longer update
+
+            # Log loading progress for debugging
+            if loaded_count < tile_count:
+                logger.debug(f"Loaded {loaded_count}/{tile_count} tiles")
 
         # Draw a slight darkening overlay to make other elements more visible
         painter.fillRect(
@@ -1201,3 +1400,11 @@ class MinimapWidget(QWidget):
         y = self._centery + (point_tile_y - ref_tile_y) * config.TILE_SIZE
 
         return x, y
+
+    def toggle_auto_zoom(self):
+        """Toggle automatic zoom adjustment."""
+        self._auto_zoom = not self._auto_zoom
+        if self._auto_zoom:
+            self._adjust_zoom_to_fit_trajectory()
+            self.update()
+        return self._auto_zoom

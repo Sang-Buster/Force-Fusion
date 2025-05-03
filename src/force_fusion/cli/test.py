@@ -5,7 +5,7 @@ CLI command to run Force-Fusion widget tests.
 import argparse
 import sys
 
-from force_fusion.cli.tests_utils import (
+from force_fusion.utils.test_utils import (
     test_all,
     test_attitude,
     test_gg_diagram,
