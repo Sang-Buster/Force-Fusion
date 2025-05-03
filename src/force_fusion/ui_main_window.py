@@ -102,7 +102,7 @@ class Ui_MainWindow:
             widget.setMinimumSize(QSize(200, 200))
 
         # Create title labels
-        self.minimapTitle = QLabel("2D Minimap")
+        self.minimapTitle = QLabel("Minimap")
         self.speedometerTitle = QLabel("Speedometer")
         self.attitudeTitle = QLabel("Attitude")
         self.ggDiagramTitle = QLabel("G-G Diagram")

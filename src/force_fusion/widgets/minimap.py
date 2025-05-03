@@ -29,7 +29,7 @@ from PyQt5.QtWidgets import (
 )
 
 from force_fusion import config
-from force_fusion.widgets.geo_utils import (
+from force_fusion.utils.geo_utils import (
     geo_to_screen,
     geo_to_tile,
     get_visible_tiles,

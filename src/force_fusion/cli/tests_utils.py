@@ -4,6 +4,7 @@ It creates simple test windows for each widget with simulated data.
 """
 
 import math
+import os
 import random
 import sys
 
@@ -67,8 +68,8 @@ class TestWindow(QMainWindow):
         # Test data
         self.test_data = {
             "counter": 0,
-            "latitude": 37.7749,
-            "longitude": -122.4194,
+            "latitude": config.DEFAULT_CENTER[1],  # Use config default
+            "longitude": config.DEFAULT_CENTER[0],  # Use config default
             "speed": 0.0,
             "acceleration": 0.0,
             "pitch": 0.0,
@@ -80,6 +81,7 @@ class TestWindow(QMainWindow):
                 "RL": config.TIRE_FORCE_NORMAL,
                 "RR": config.TIRE_FORCE_NORMAL,
             },
+            "lateral_acceleration": 0.0,  # Added for GG diagram
         }
 
     def start_test(self):
@@ -112,19 +114,27 @@ class TestWindow(QMainWindow):
 
         # Update position based on heading and speed
         speed_ms = self.test_data["speed"] / 3.6  # km/h to m/s
-        distance = speed_ms * 0.1  # distance in 100ms
+        update_interval_sec = config.SPEED_UPDATE_INTERVAL / 1000.0
+        distance = speed_ms * update_interval_sec  # distance based on timer interval
         heading_rad = math.radians(self.test_data["heading"])
 
-        # Simple movement calculation
-        lat_change = distance * math.cos(heading_rad) / 111000  # 1 degree lat ≈ 111km
-        lng_change = (
-            distance
-            * math.sin(heading_rad)
-            / (111000 * math.cos(math.radians(self.test_data["latitude"])))
+        # Simple movement calculation (approximation)
+        # Meters per degree latitude is relatively constant
+        meters_per_degree_lat = 111000
+        # Meters per degree longitude varies with latitude
+        meters_per_degree_lon = 111000 * math.cos(
+            math.radians(self.test_data["latitude"])
         )
 
+        # Avoid division by zero if at poles, though unlikely
+        if meters_per_degree_lon == 0:
+            meters_per_degree_lon = 0.001
+
+        lat_change = distance * math.cos(heading_rad) / meters_per_degree_lat
+        lon_change = distance * math.sin(heading_rad) / meters_per_degree_lon
+
         self.test_data["latitude"] += lat_change
-        self.test_data["longitude"] += lng_change
+        self.test_data["longitude"] += lon_change
 
         # Update tire forces with some randomness and weight transfer effects
         lat_transfer = self.test_data["roll"] * 20
@@ -158,7 +168,7 @@ class TestWindow(QMainWindow):
         # Ensure forces are within limits
         for key in self.test_data["forces"]:
             self.test_data["forces"][key] = max(
-                500, min(4500, self.test_data["forces"][key])
+                500, min(config.TIRE_FORCE_MAX, self.test_data["forces"][key])
             )
 
         # Update widget based on type
@@ -313,12 +323,12 @@ def test_tire_force():
                 test_data["forces"][position] = (1 - ratio) * max_force
 
         # Print the current forces to verify
-        print(
-            f"Forces: FL={test_data['forces']['FL']:.0f}N, "
-            + f"FR={test_data['forces']['FR']:.0f}N, "
-            + f"RL={test_data['forces']['RL']:.0f}N, "
-            + f"RR={test_data['forces']['RR']:.0f}N"
-        )
+        # print(
+        #     f"Forces: FL={test_data['forces']['FL']:.0f}N, "
+        #     + f"FR={test_data['forces']['FR']:.0f}N, "
+        #     + f"RL={test_data['forces']['RL']:.0f}N, "
+        #     + f"RR={test_data['forces']['RR']:.0f}N"
+        # )
 
         # Update widgets with calculated forces
         fl_widget.set_force(test_data["forces"]["FL"])
@@ -335,6 +345,11 @@ def test_tire_force():
 
 def test_mapbox():
     """Test the mapbox widget."""
+    # Disable GPU acceleration for WebEngine to avoid EGL errors on some systems
+    # Must be done before QApplication is initialized
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu"
+    print("Attempting to disable GPU acceleration for Mapbox test...")
+
     app = QApplication(sys.argv)
     window = TestWindow(MapboxView(), "Mapbox View")
     window.show()
@@ -343,6 +358,11 @@ def test_mapbox():
 
 def test_all():
     """Test all widgets together (main dashboard)."""
+    # Disable GPU acceleration for WebEngine if MapboxView is included
+    # Should be done before QApplication for safety
+    os.environ["QTWEBENGINE_CHROMIUM_FLAGS"] = "--disable-gpu"
+    print("Attempting to disable GPU acceleration for full dashboard test...")
+
     # Don't import main - this causes a circular dependency
     app = QApplication(sys.argv)
 
@@ -360,6 +380,9 @@ def test_all():
 
 
 if __name__ == "__main__":
+    # Make sure os is imported if we need it here or in called functions
+    import os
+
     if len(sys.argv) > 1:
         test_name = sys.argv[1]
         if test_name == "minimap":
@@ -377,6 +400,8 @@ if __name__ == "__main__":
         elif test_name == "gg_diagram":
             test_gg_diagram()
         else:
+            # Default to testing all if argument is unknown
+            print(f"Unknown test '{test_name}', running 'all' instead.")
             test_all()
     else:
         test_all()

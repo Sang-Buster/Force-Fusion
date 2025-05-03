@@ -126,13 +126,22 @@ force-fusion --help
 📂Force-Fusion
  ┣ 📂src                         // Source Code
  ┃ ┗ 📦force_fusion                  // Python package
+ ┃ ┃ ┣ 📂cli                             // Command Line Interface Directory
+ ┃ ┃ ┃ ┣ 📄cli.py
+ ┃ ┃ ┃ ┣ 📄env.py
+ ┃ ┃ ┃ ┣ 📄env_utils.py
+ ┃ ┃ ┃ ┣ 📄test.py
+ ┃ ┃ ┃ ┗ 📄tests_utils.py
  ┃ ┃ ┣ 📂resources                       // Static Resources Directory
+ ┃ ┃ ┃ ┣ 📄car_back.svg
+ ┃ ┃ ┃ ┣ 📄car_side.svg
  ┃ ┃ ┃ ┣ 📄car.glb
  ┃ ┃ ┃ ┣ 📄favicon.png
- ┃ ┃ ┃ ┣ 📄map_style.json
+ ┃ ┃ ┃ ┣ 📄map.html
  ┃ ┃ ┃ ┗ 📄styles.qss
  ┃ ┃ ┣ 📂widgets                         // Widgets Directory  
  ┃ ┃ ┃ ┣ 📄attitude.py
+ ┃ ┃ ┃ ┣ 📄gg_diagram.py
  ┃ ┃ ┃ ┣ 📄heading.py
  ┃ ┃ ┃ ┣ 📄mapbox_view.py
  ┃ ┃ ┃ ┣ 📄minimap.py
@@ -142,7 +151,6 @@ force-fusion --help
  ┃ ┃ ┣ 📄config.py
  ┃ ┃ ┣ 📄controller.py
  ┃ ┃ ┣ 📄sensors.py
- ┃ ┃ ┣ 📄tests.py
  ┃ ┃ ┗ 📄ui_main_window.py
  ┣ 📄.env.example                // Template for environment variables
  ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
