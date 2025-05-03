@@ -9,6 +9,7 @@
 
 ---
 
+[▶️ Watch Demo Video](https://github.com/user-attachments/assets/6da15919-4409-4f2f-801d-bb6dbe1a3da1)
 
 <div align="center">
   <h2>🚀 Getting Started</h2>
