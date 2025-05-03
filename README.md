@@ -81,7 +81,6 @@ force-fusion --help
    ```
    - You can get a `MAPBOX_TOKEN` by signing up at https://www.mapbox.com/
    - Update the `CSV_PATH` if you want to use a custom database file
-   - Update the `VEH_MODEL_PATH` if you want to use a custom vehicle model
    - Update the `WS_PORT` if you want to use a custom websocket port
    - Modify more variables in `.env` as needed
 
