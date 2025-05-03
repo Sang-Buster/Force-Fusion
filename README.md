@@ -15,12 +15,10 @@
   <h2>🚀 Getting Started</h2>
 </div>
 
-Get [uv](https://docs.astral.sh/uv/getting-started/installation/) and create a virtual environment.
+It is recommended to use [uv](https://docs.astral.sh/uv/getting-started/installation/) to create a virtual environment and pip install the following package.
 
 ```bash
-uv venv --python 3.10
-source .venv/bin/activate
-uv pip install force-fusion
+pip install force-fusion
 ```
 
 To run the application, simply type:
@@ -131,16 +129,19 @@ force-fusion --help
  ┃ ┃ ┣ 📂cli                             // Command Line Interface Directory
  ┃ ┃ ┃ ┣ 📄cli.py
  ┃ ┃ ┃ ┣ 📄env.py
- ┃ ┃ ┃ ┣ 📄env_utils.py
  ┃ ┃ ┃ ┣ 📄test.py
- ┃ ┃ ┃ ┗ 📄tests_utils.py
  ┃ ┃ ┣ 📂resources                       // Static Resources Directory
  ┃ ┃ ┃ ┣ 📄car_back.svg
  ┃ ┃ ┃ ┣ 📄car_side.svg
- ┃ ┃ ┃ ┣ 📄car.glb
+ ┃ ┃ ┃ ┣ 📄demo.mp4
  ┃ ┃ ┃ ┣ 📄favicon.png
- ┃ ┃ ┃ ┣ 📄map.html
  ┃ ┃ ┃ ┗ 📄styles.qss
+ ┃ ┃ ┣ 📂utils                           // Utility Directory
+ ┃ ┃ ┃ ┣ 📄env_utils.py
+ ┃ ┃ ┃ ┣ 📄geo_utils.py
+ ┃ ┃ ┃ ┣ 📄test_utils.py
+ ┃ ┃ ┃ ┣ 📄websocket_client_test.py
+ ┃ ┃ ┃ ┗ 📄websocket_server.py
  ┃ ┃ ┣ 📂widgets                         // Widgets Directory  
  ┃ ┃ ┃ ┣ 📄attitude.py
  ┃ ┃ ┃ ┣ 📄gg_diagram.py
