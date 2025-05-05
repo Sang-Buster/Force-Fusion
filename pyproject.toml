@@ -1,6 +1,6 @@
 [project]
 name = "force-fusion"
-version = "0.0.6"
+version = "0.0.7"
 description = " A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution."
 authors = [{ name = "Sang Buster", email = "hello@singsongaftermath.com" }]
 readme = "README.md"
