@@ -3,7 +3,6 @@ Sensor data provider that emits signals for all dashboard data channels.
 """
 
 import csv
-import json
 import math
 import os
 from datetime import datetime
@@ -56,11 +55,10 @@ class SensorProvider(QObject):
         super().__init__()
 
         self.data_source = data_source
-        print(f"Initializing SensorProvider with data source: {data_source}")
 
-        # Show detailed startup info only in DEBUG_MODE
         if config.DEBUG_MODE:
-            print(f"WebSocket URI: {config.WS_URI}")
+            print(f"⚙️ Initializing SensorProvider with data source: {data_source}")
+            print(f"⚙️ WebSocket URI: {config.WS_URI}")
             print("=" * 50)
             print("   STARTING FORCE-FUSION SENSOR PROVIDER")
             print(f"   Mode: {data_source}")
@@ -135,7 +133,8 @@ class SensorProvider(QObject):
 
     def start(self):
         """Start the sensor data feed based on the selected source."""
-        print(f"Starting sensor provider with data source: {self.data_source}")
+        if config.DEBUG_MODE:
+            print(f"🔄 Starting sensor provider with data source: {self.data_source}")
 
         # Make sure any previous timers are stopped
         self.stop()
@@ -152,9 +151,10 @@ class SensorProvider(QObject):
                 # First connection can take a bit longer, use a different initial interval
                 # This allows time for the server to start
                 initial_reconnect_interval = 500  # 0.5 seconds
-                print(
-                    f"Starting initial connection attempt timer ({initial_reconnect_interval}ms)"
-                )
+                if config.DEBUG_MODE:
+                    print(
+                        f"⏱️ Starting initial connection timer ({initial_reconnect_interval}ms)"
+                    )
                 self._reconnect_timer.start(initial_reconnect_interval)
 
                 # Set up a one-time longer reconnect after a bit more time
@@ -168,7 +168,7 @@ class SensorProvider(QObject):
                 "Connecting", f"Waiting for WebSocket ({config.WS_URI})"
             )
         else:
-            print(f"Unsupported data source: {self.data_source}")
+            print(f"⚠️ Unsupported data source: {self.data_source}")
             # Fall back to simulated data
             self.data_source = "simulated"
             self._start_simulated_data()
@@ -181,33 +181,35 @@ class SensorProvider(QObject):
 
     def stop(self):
         """Stop all sensor update timers and connections."""
+        if config.DEBUG_MODE:
+            print("🛑 Stopping sensor provider")
+
         # Stop timers
-        print("Stopping all sensor timers")
-        if hasattr(self, "_position_timer"):
-            self._position_timer.stop()
-        if hasattr(self, "_speed_timer"):
-            self._speed_timer.stop()
-        if hasattr(self, "_attitude_timer"):
-            self._attitude_timer.stop()
-        if hasattr(self, "_tire_force_timer"):
-            self._tire_force_timer.stop()
-        if hasattr(self, "_time_timer"):
-            self._time_timer.stop()
-        if hasattr(self, "_reconnect_timer"):
-            self._reconnect_timer.stop()
+        for timer_attr in [
+            "_position_timer",
+            "_speed_timer",
+            "_attitude_timer",
+            "_tire_force_timer",
+            "_time_timer",
+            "_reconnect_timer",
+        ]:
+            if hasattr(self, timer_attr):
+                timer = getattr(self, timer_attr)
+                if timer.isActive():
+                    timer.stop()
 
         # Close WebSocket connection
         if hasattr(self, "_websocket"):
             state = self._websocket.state()
             if state == QAbstractSocket.ConnectedState:
-                print("Closing active WebSocket connection")
+                if config.DEBUG_MODE:
+                    print("🔌 Closing WebSocket connection")
                 self._websocket.close()
-            else:
-                print(f"WebSocket not connected (state: {state})")
 
         # Close CSV file if open
         if hasattr(self, "_csv_file") and self._csv_file and not self._csv_file.closed:
-            print("Closing CSV log file")
+            if config.DEBUG_MODE:
+                print("📝 Closing CSV log file")
             self._csv_file.close()
             self._csv_file = None
             self._csv_writer = None
@@ -222,7 +224,9 @@ class SensorProvider(QObject):
 
             # Debug message
             if config.DEBUG_MODE:
-                print(f"Setting up CSV logging to: {os.path.abspath(config.CSV_PATH)}")
+                print(
+                    f"📊 Setting up CSV logging to: {os.path.abspath(config.CSV_PATH)}"
+                )
 
             # Open CSV file in append mode
             self._csv_file = open(config.CSV_PATH, "a", newline="")
@@ -251,10 +255,10 @@ class SensorProvider(QObject):
             if self._csv_file.tell() == 0:
                 self._csv_writer.writeheader()
                 if config.DEBUG_MODE:
-                    print("Added CSV header (new file)")
+                    print("✓ CSV header written")
 
         except Exception as e:
-            print(f"Error setting up CSV logging: {e}")
+            print(f"❌ Error setting up CSV logging: {e}")
             self._csv_file = None
             self._csv_writer = None
 
@@ -320,30 +324,13 @@ class SensorProvider(QObject):
         """Connect to the WebSocket server."""
         # Make sure we're not already connected
         if self._websocket.state() == QAbstractSocket.ConnectedState:
-            if config.DEBUG_MODE:
-                print("Already connected to WebSocket server, disconnecting first")
             self._websocket.close()
-
-        # Debug info
-        if config.DEBUG_MODE:
-            print(
-                f"WebSocket URL is: {config.WS_URI} (host={config.WS_HOST}, port={config.WS_PORT})"
-            )
 
         # Update UI status
         self.connection_status_changed.emit("Connecting", f"WebSocket: {config.WS_URI}")
 
-        if config.DEBUG_MODE:
-            print(f"Opening WebSocket connection to: {config.WS_URI}")
-        else:
-            print(f"Connecting to: {config.WS_URI}")
+        print(f"🔌 Connecting to WebSocket: {config.WS_URI}")
 
-        # Debug timer disabled - was causing 5-second update issue
-        # self._debug_timer = QTimer()
-        # self._debug_timer.timeout.connect(self._simulate_websocket_message)
-        # self._debug_timer.start(5000)  # Test message every 5 seconds
-
-        # Open the connection
         # Convert string URL to QUrl
         import re
 
@@ -352,90 +339,35 @@ class SensorProvider(QObject):
         else:
             url = QUrl(config.WS_URI)
 
-        if config.DEBUG_MODE:
-            print(f"Opening connection to: {url.toString()}")
-
-            # Explicitly set the WebSocket version and protocols
-            self._websocket.version()
-            print(f"WebSocket version: {self._websocket.version()}")
-
         # Open the connection
         self._websocket.open(url)
-
-    def _simulate_websocket_message(self):
-        """Simulate a WebSocket message for debugging."""
-        print("Debug simulation disabled")
-        return
-
-        # Only run this if in WebSocket mode
-        if self.data_source != "websocket":
-            self._debug_timer.stop()
-            return
-
-        # Simulate a received message
-        print("\n=== SIMULATING WEBSOCKET MESSAGE ===")
-        test_data = {
-            "timestamp": datetime.now().isoformat(),
-            "test": True,
-            "latitude": 29.18 + (self._messages_received * 0.001),
-            "longitude": -81.04 - (self._messages_received * 0.001),
-            "speed": 50.0 + (self._messages_received * 2.0),
-            "heading": (self._messages_received * 10) % 360,
-            "acceleration_x": 1.0,
-            "acceleration_y": 0.5,
-            "pitch": 2.0,
-            "roll": 1.0,
-            "tire_forces": {"FL": 2000, "FR": 2000, "RL": 2000, "RR": 2000},
-        }
-
-        # Convert to JSON and process
-        test_msg = json.dumps(test_data)
-        print(f"Simulated message: {test_msg[:100]}...")
-
-        # Call the message handler directly
-        self._on_websocket_message(test_msg)
-
-        # Check if the message was handled correctly
-        print("=== END SIMULATED MESSAGE ===\n")
 
     def _try_reconnect(self):
         """Attempt to reconnect to the WebSocket server."""
         if self.data_source != "websocket":
-            if config.DEBUG_MODE:
-                print("Not in WebSocket mode, stopping reconnection timer")
             self._reconnect_timer.stop()
             return
 
         if self._websocket.state() != QAbstractSocket.ConnectedState:
+            if config.DEBUG_MODE:
+                print(f"🔄 Reconnecting to WebSocket: {config.WS_URI}")
+
             self.connection_status_changed.emit(
                 "Reconnecting", f"WebSocket: {config.WS_URI}"
             )
 
-            if config.DEBUG_MODE:
-                print(f"Attempting to reconnect to WebSocket server: {config.WS_URI}")
-
             # Close any existing connection first
             if self._websocket.state() != QAbstractSocket.UnconnectedState:
-                if config.DEBUG_MODE:
-                    print(
-                        f"WebSocket in state {self._websocket.state()}, closing first"
-                    )
                 self._websocket.close()
 
             # Try to open a new connection
             self._websocket.open(QUrl(config.WS_URI))
         else:
-            if config.DEBUG_MODE:
-                print("WebSocket already connected, stopping reconnection timer")
             self._reconnect_timer.stop()
 
     def _on_websocket_connected(self):
         """Handle WebSocket connection success."""
-        if config.DEBUG_MODE:
-            print("\n=== WEBSOCKET CONNECTED SUCCESSFULLY ===")
-            print(f"Socket state: {self._websocket.state()}")
-        else:
-            print("WebSocket Connected")
+        print("✅ WebSocket Connected")
 
         self.connection_status_changed.emit("Active", "WebSocket Data Active")
         self._reconnect_timer.stop()  # Stop reconnection attempts
@@ -456,18 +388,9 @@ class SensorProvider(QObject):
         self._roll = 0.0
         self.roll_changed.emit(self._roll)
 
-        # Don't reset position and heading to prevent map jumping
-
-        # Log the connection
-        if config.DEBUG_MODE:
-            print("=== READY TO RECEIVE DATA ===\n")
-        else:
-            print("Ready to receive data")
-
     def _on_websocket_disconnected(self):
         """Handle WebSocket disconnection."""
-        if config.DEBUG_MODE:
-            print("WebSocket disconnected")
+        print("❌ WebSocket Disconnected")
 
         self.connection_status_changed.emit("Inactive", "WebSocket Disconnected")
 
@@ -497,20 +420,12 @@ class SensorProvider(QObject):
 
         # Start reconnection timer
         if self.data_source == "websocket" and not self._reconnect_timer.isActive():
-            if config.DEBUG_MODE:
-                print(
-                    f"Starting reconnection timer (interval: {config.WS_RECONNECT_INTERVAL}ms)"
-                )
             self._reconnect_timer.start(config.WS_RECONNECT_INTERVAL)
 
     def _on_websocket_error(self, error_code):
         """Handle WebSocket errors."""
         error_message = self._websocket.errorString()
-
-        if config.DEBUG_MODE:
-            print(f"WebSocket error: {error_message} (code: {error_code})")
-        else:
-            print(f"WebSocket error: {error_message}")
+        print(f"❌ WebSocket error: {error_message}")
 
         self.connection_status_changed.emit(
             "Error", f"WebSocket Error: {error_message}"
@@ -518,10 +433,6 @@ class SensorProvider(QObject):
 
         # Start reconnection timer
         if self.data_source == "websocket" and not self._reconnect_timer.isActive():
-            if config.DEBUG_MODE:
-                print(
-                    f"Starting reconnection timer after error (interval: {config.WS_RECONNECT_INTERVAL}ms)"
-                )
             self._reconnect_timer.start(config.WS_RECONNECT_INTERVAL)
 
     def _on_websocket_message(self, message):
@@ -865,16 +776,18 @@ class SensorProvider(QObject):
         Args:
             source: New data source ("simulated", "websocket", "file", or "can")
         """
-        print(f"Setting data source from {self.data_source} to {source}")
+        print(f"🔄 Changing data source: {self.data_source} → {source}")
+
         # Only restart if the source is actually different
         if source != self.data_source:
-            # First stop current data source
-            print(f"Stopping current data source: {self.data_source}")
+            # Stop current data source
             self.stop()
 
             # Clean up any existing connections
             if hasattr(self, "_websocket") and self._websocket:
-                print("Forcing WebSocket cleanup")
+                if config.DEBUG_MODE:
+                    print("🔄 Resetting WebSocket connection")
+
                 try:
                     # Disconnect all signals to avoid callbacks during cleanup
                     self._websocket.connected.disconnect()
@@ -882,7 +795,8 @@ class SensorProvider(QObject):
                     self._websocket.textMessageReceived.disconnect()
                     self._websocket.error.disconnect()
                 except Exception as e:
-                    print(f"Error disconnecting signals: {e}")
+                    if config.DEBUG_MODE:
+                        print(f"⚠️ Signal disconnect error: {e}")
 
                 # Close and delete the socket
                 self._websocket.close()
@@ -892,40 +806,19 @@ class SensorProvider(QObject):
                 from PyQt5.QtWebSockets import QWebSocket
 
                 self._websocket = QWebSocket()
-                print("Creating new WebSocket with signal connections:")
 
-                # Connect the signals with explicit checks
+                # Connect the signals
                 self._websocket.connected.connect(self._on_websocket_connected)
-                print("  - connected signal connected")
-
                 self._websocket.disconnected.connect(self._on_websocket_disconnected)
-                print("  - disconnected signal connected")
-
                 self._websocket.textMessageReceived.connect(self._on_websocket_message)
-                print("  - textMessageReceived signal connected")
-
                 self._websocket.error.connect(self._on_websocket_error)
-                print("  - error signal connected")
-
-                # Add a local test signal connection to verify signal handling is working
-                def test_websocket_signals():
-                    print("Testing WebSocket message signal...")
-                    self._on_websocket_message('{"test":"Testing signal connection"}')
-
-                # Schedule a test message after 2 seconds
-                test_timer = QTimer()
-                test_timer.setSingleShot(True)
-                test_timer.timeout.connect(test_websocket_signals)
-                test_timer.start(2000)
 
             # Set the new data source
             self.data_source = source
 
             # Start with the new source
-            print(f"Starting new data source: {self.data_source}")
             self.start()
         else:
-            print(f"Data source already set to {source}, forcing restart")
             # Force a restart of the same source for reconnection
             self.stop()
             self.start()

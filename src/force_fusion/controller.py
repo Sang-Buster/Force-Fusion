@@ -126,30 +126,20 @@ class DashboardController(QObject):
         # Get the data source ID from the combo box
         data_source = self.main_window.data_source_selector.itemData(index)
 
-        # Print debugging information
-        print(f"Data source changed to: {data_source} (index: {index})")
-        print(
-            f"Available data sources: {[self.main_window.data_source_selector.itemData(i) for i in range(self.main_window.data_source_selector.count())]}"
-        )
+        if not data_source:
+            print("⚠️ Warning: No data source selected")
+            return
 
-        # Update the sensor provider's data source
-        if data_source:
-            print(f"Setting sensor provider data source to: {data_source}")
+        print(f"🔄 Switching data source: {data_source}")
 
-            # Clear old status first
-            if data_source == "simulated":
-                # Update status bar immediately when switching to simulated data
-                self.main_window.status_bar.showMessage("Using Simulated Data")
-            elif data_source == "websocket":
-                # When switching to WebSocket, initially show connecting status
-                self.main_window.status_bar.showMessage(
-                    "Connecting to WebSocket server..."
-                )
+        # Update the UI status immediately
+        if data_source == "simulated":
+            self.main_window.status_bar.showMessage("Using Simulated Data")
+        elif data_source == "websocket":
+            self.main_window.status_bar.showMessage("Connecting to WebSocket server...")
 
-            # Now change the data source
-            self.sensor_provider.set_data_source(data_source)
-        else:
-            print("Warning: No data source selected")
+        # Change the data source
+        self.sensor_provider.set_data_source(data_source)
 
     def _on_connection_status_changed(self, status, message):
         """
@@ -416,7 +406,6 @@ class DashboardController(QObject):
 
     def _force_initial_update(self):
         """Force an initial update of the UI with current data."""
-        print("Forcing initial update of UI")
         if self.sensor_provider.data_source == "websocket":
             # Display active connection status while we wait for real data
             self.main_window.update_connection_status(

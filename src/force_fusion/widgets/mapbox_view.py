@@ -449,8 +449,8 @@ class MapboxView(QWidget):
             <div style="text-align:center;">
                 <div id="vehicle-marker" style="
                     display: inline-block; 
-                    width: 16px; 
-                    height: 32px; 
+                    width: 8px; 
+                    height: 16px; 
                     background-color: {marker_color}; 
                     border: 2px solid white;
                     border-radius: 2px;
