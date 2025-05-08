@@ -129,4 +129,46 @@ force-fusion --help
   <h2>📝 File Structure</h2>
 </div>
 
-``
+```text
+📂Force-Fusion
+ ┣ 📂src                         // Source Code
+ ┃ ┗ 📦force_fusion                  // Python package
+ ┃ ┃ ┣ 📂cli                             // Command Line Interface Directory
+ ┃ ┃ ┃ ┣ 📄cli.py
+ ┃ ┃ ┃ ┣ 📄env.py
+ ┃ ┃ ┃ ┣ 📄test.py
+ ┃ ┃ ┣ 📂resources                       // Static Resources Directory
+ ┃ ┃ ┃ ┣ 📄car_back.svg
+ ┃ ┃ ┃ ┣ 📄car_side.svg
+ ┃ ┃ ┃ ┣ 📄demo.mp4
+ ┃ ┃ ┃ ┣ 📄favicon.png
+ ┃ ┃ ┃ ┗ 📄styles.qss
+ ┃ ┃ ┣ 📂utils                           // Utility Directory
+ ┃ ┃ ┃ ┣ 📄env_utils.py
+ ┃ ┃ ┃ ┣ 📄geo_utils.py
+ ┃ ┃ ┃ ┣ 📄test_utils.py
+ ┃ ┃ ┃ ┣ 📄websocket_client_test.py
+ ┃ ┃ ┃ ┗ 📄websocket_server.py
+ ┃ ┃ ┣ 📂widgets                         // Widgets Directory  
+ ┃ ┃ ┃ ┣ 📄attitude.py
+ ┃ ┃ ┃ ┣ 📄gg_diagram.py
+ ┃ ┃ ┃ ┣ 📄heading.py
+ ┃ ┃ ┃ ┣ 📄mapbox_view.py
+ ┃ ┃ ┃ ┣ 📄minimap.py
+ ┃ ┃ ┃ ┣ 📄speedometer.py
+ ┃ ┃ ┃ ┗ 📄tire_force.py
+ ┃ ┃ ┣ 📄app.py
+ ┃ ┃ ┣ 📄config.py
+ ┃ ┃ ┣ 📄controller.py
+ ┃ ┃ ┣ 📄sensors.py
+ ┃ ┃ ┗ 📄ui_main_window.py
+ ┣ 📄.env.example                // Template for environment variables
+ ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
+ ┣ 📄.pre-commit-config.yaml     // Pre-commit hooks (ruff, commit message)
+ ┣ 📄.pre-commit_msg_template.py // Commit message format validator
+ ┣ 📄.python-version             // Python version
+ ┣ 📄LICENSE                     // MIT License
+ ┣ 📄README.md                   // Project documentation
+ ┣ 📄pyproject.toml              // Project configuration
+ ┗ 📄uv.lock                     // Lock file
+ ```
