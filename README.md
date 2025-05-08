@@ -1,10 +1,17 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Force-Fusion">
       <img src="/src/force_fusion/resources/favicon.png" width=40% alt="logo">
-   </a>   
+   </a>
    <h1>Force Fusion</h1>
-    <h6><small>A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution.</small></h6>
-    <p><b>#Vehicle Dynamics &emsp; #Normal-force Estimation &emsp; #PyQt &emsp; #3D Visualization</b></p>
+   <a href="https://deepwiki.com/Sang-Buster/Force-Fusion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
+   <a href="https://pypi.org/project/force-fusion/"><img src="https://img.shields.io/pypi/v/force-fusion" alt="PyPI"></a>
+   <a href="https://github.com/Sang-Buster/Force-Fusion/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Sang-Buster/Force-Fusion" alt="License"></a>
+   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/badge/package%20manager-uv-000000.svg" alt="uv"></a>
+   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Ruff"></a>
+   <a href="https://pepy.tech/project/force-fusion"><img src="https://pepy.tech/badge/force-fusion" alt="Downloads"></a>
+   <a href="https://github.com/Sang-Buster/Force-Fusion/commits/main"><img src="https://img.shields.io/github/last-commit/Sang-Buster/Force-Fusion" alt="Last Commit"></a>
+   <h6><small>A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution.</small></h6>
+   <p><b>#Vehicle Dynamics &emsp; #Normal-force Estimation &emsp; #PyQt &emsp; #3D Visualization</b></p>
 </div>
 
 ---
@@ -122,46 +129,4 @@ force-fusion --help
   <h2>📝 File Structure</h2>
 </div>
 
-```text
-📂Force-Fusion
- ┣ 📂src                         // Source Code
- ┃ ┗ 📦force_fusion                  // Python package
- ┃ ┃ ┣ 📂cli                             // Command Line Interface Directory
- ┃ ┃ ┃ ┣ 📄cli.py
- ┃ ┃ ┃ ┣ 📄env.py
- ┃ ┃ ┃ ┣ 📄test.py
- ┃ ┃ ┣ 📂resources                       // Static Resources Directory
- ┃ ┃ ┃ ┣ 📄car_back.svg
- ┃ ┃ ┃ ┣ 📄car_side.svg
- ┃ ┃ ┃ ┣ 📄demo.mp4
- ┃ ┃ ┃ ┣ 📄favicon.png
- ┃ ┃ ┃ ┗ 📄styles.qss
- ┃ ┃ ┣ 📂utils                           // Utility Directory
- ┃ ┃ ┃ ┣ 📄env_utils.py
- ┃ ┃ ┃ ┣ 📄geo_utils.py
- ┃ ┃ ┃ ┣ 📄test_utils.py
- ┃ ┃ ┃ ┣ 📄websocket_client_test.py
- ┃ ┃ ┃ ┗ 📄websocket_server.py
- ┃ ┃ ┣ 📂widgets                         // Widgets Directory  
- ┃ ┃ ┃ ┣ 📄attitude.py
- ┃ ┃ ┃ ┣ 📄gg_diagram.py
- ┃ ┃ ┃ ┣ 📄heading.py
- ┃ ┃ ┃ ┣ 📄mapbox_view.py
- ┃ ┃ ┃ ┣ 📄minimap.py
- ┃ ┃ ┃ ┣ 📄speedometer.py
- ┃ ┃ ┃ ┗ 📄tire_force.py
- ┃ ┃ ┣ 📄app.py
- ┃ ┃ ┣ 📄config.py
- ┃ ┃ ┣ 📄controller.py
- ┃ ┃ ┣ 📄sensors.py
- ┃ ┃ ┗ 📄ui_main_window.py
- ┣ 📄.env.example                // Template for environment variables
- ┣ 📄.gitignore                  // Git ignore patterns (env, cache, database)
- ┣ 📄.pre-commit-config.yaml     // Pre-commit hooks (ruff, commit message)
- ┣ 📄.pre-commit_msg_template.py // Commit message format validator
- ┣ 📄.python-version             // Python version
- ┣ 📄LICENSE                     // MIT License
- ┣ 📄README.md                   // Project documentation
- ┣ 📄pyproject.toml              // Project configuration
- ┗ 📄uv.lock                     // Lock file
-```
+``
