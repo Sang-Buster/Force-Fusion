@@ -8,7 +8,7 @@
    <a href="https://github.com/Sang-Buster/Force-Fusion/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Sang-Buster/Force-Fusion" alt="License"></a>
    <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/badge/package%20manager-uv-000000.svg" alt="uv"></a>
    <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Ruff"></a>
-   <a href="https://pepy.tech/project/force-fusion"><img src="https://pepy.tech/badge/force-fusion" alt="Downloads"></a>
+   <a href="https://pepy.tech/project/force-fusion"><img src="https://img.shields.io/pypi/dm/force-fusion" alt="Downloads"></a>
    <a href="https://github.com/Sang-Buster/Force-Fusion/commits/main"><img src="https://img.shields.io/github/last-commit/Sang-Buster/Force-Fusion" alt="Last Commit"></a>
    <h6><small>A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution.</small></h6>
    <p><b>#Vehicle Dynamics &emsp; #Normal-force Estimation &emsp; #PyQt &emsp; #3D Visualization</b></p>
