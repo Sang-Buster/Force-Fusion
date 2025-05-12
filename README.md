@@ -1,6 +1,6 @@
 <div align="center">
    <a href="https://github.com/Sang-Buster/Force-Fusion">
-      <img src="https://raw.githubusercontent.com/Sang-Buster/Force-Fusion/refs/heads/main/src/force_fusion/resources/favicon.png" width=40% alt="logo">
+      <img src="https://raw.githubusercontent.com/Sang-Buster/Force-Fusion/refs/heads/main/src/force_fusion/resources/favicon.png" width=30% alt="logo">
    </a>
    <h1>Force Fusion</h1>
    <a href="https://deepwiki.com/Sang-Buster/Force-Fusion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
