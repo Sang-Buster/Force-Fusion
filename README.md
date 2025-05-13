@@ -6,9 +6,8 @@
    <a href="https://deepwiki.com/Sang-Buster/Force-Fusion"><img src="https://deepwiki.com/badge.svg" alt="Ask DeepWiki"></a>
    <a href="https://pypi.org/project/force-fusion/"><img src="https://img.shields.io/pypi/v/force-fusion" alt="PyPI"></a>
    <a href="https://github.com/Sang-Buster/Force-Fusion/blob/main/LICENSE"><img src="https://img.shields.io/github/license/Sang-Buster/Force-Fusion" alt="License"></a>
-   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/badge/package%20manager-uv-000000.svg" alt="uv"></a>
-   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/badge/code%20style-ruff-000000.svg" alt="Ruff"></a>
-   <a href="https://pepy.tech/project/force-fusion"><img src="https://img.shields.io/pypi/dm/force-fusion" alt="Downloads"></a>
+   <a href="https://github.com/astral-sh/uv"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/uv/main/assets/badge/v0.json" alt="uv"></a>
+   <a href="https://github.com/astral-sh/ruff"><img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff"></a>
    <a href="https://github.com/Sang-Buster/Force-Fusion/commits/main"><img src="https://img.shields.io/github/last-commit/Sang-Buster/Force-Fusion" alt="Last Commit"></a>
    <h6><small>A real-time PyQt dashboard visualizing vehicle dynamics and normal-force distribution.</small></h6>
    <p><b>#Vehicle Dynamics &emsp; #Normal-force Estimation &emsp; #PyQt &emsp; #3D Visualization</b></p>
